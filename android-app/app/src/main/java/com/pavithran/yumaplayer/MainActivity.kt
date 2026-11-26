@@ -101,6 +101,9 @@ class MainActivity : AppCompatActivity() {
             settings.allowFileAccess = true
             settings.allowContentAccess = true
             settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+            settings.useWideViewPort = true
+            settings.loadWithOverviewMode = true
+            settings.textZoom = 100
             webChromeClient = WebChromeClient()
             webViewClient = WebViewClient()
             addJavascriptInterface(YumaAndroidBridge(), "YumaAndroid")
@@ -438,7 +441,7 @@ class MainActivity : AppCompatActivity() {
         fun getConfig(): String {
             return JSONObject().apply {
                 put("streamPort", mediaServer.port)
-                put("version", "1.4.1")
+                put("version", "1.4.2")
                 put("platform", "android")
             }.toString()
         }
@@ -637,7 +640,7 @@ class MainActivity : AppCompatActivity() {
         @JavascriptInterface
         fun checkUpdates(reqId: String) {
             executor.execute {
-                val res = YumaApiClient.checkUpdates("1.4.1")
+                val res = YumaApiClient.checkUpdates("1.4.2")
                 sendCallback(reqId, res.toString())
             }
         }
@@ -651,7 +654,7 @@ class MainActivity : AppCompatActivity() {
                         instanceFollowRedirects = true
                         connectTimeout = 15000
                         readTimeout = 30000
-                        setRequestProperty("User-Agent", "YumaPlayer-Android/1.4.0")
+                        setRequestProperty("User-Agent", "YumaPlayer-Android/1.4.2")
                     }
                     val total = conn.contentLengthLong.coerceAtLeast(1L)
                     val outFile = File(cacheDir, apkName.ifBlank { "YumaPlayer-Update.apk" })
@@ -693,7 +696,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun emitUpdateProgress(state: String, progress: Int, message: String) {
         val obj = JSONObject().apply {
-            put("currentVersion", "1.4.1")
+            put("currentVersion", "1.4.2")
             put("state", state)
             put("progress", progress)
             put("message", message)

@@ -52,8 +52,10 @@
     $('playPauseBtn').innerHTML = ICONS.play;
     $('cinemaPlayBtn').innerHTML = ICONS.play;
     $('sleepTimerBtn').innerHTML = ICONS.moon;
+    if ($('cinemaSleepBtn')) $('cinemaSleepBtn').innerHTML = ICONS.moon;
     $('npLikeBtn').innerHTML = ICONS.heart;
     $('barLikeBtn').innerHTML = ICONS.heart;
+    if ($('cinemaLikeBtn')) $('cinemaLikeBtn').innerHTML = ICONS.heart;
   }
 
   function dismissSplash() {
@@ -468,8 +470,9 @@
     $('cinemaVideoToggleBtn').innerHTML = modeLabel;
 
     const liked = isLiked(track.id);
-    ['npLikeBtn', 'barLikeBtn'].forEach((id) => {
+    ['npLikeBtn', 'barLikeBtn', 'cinemaLikeBtn'].forEach((id) => {
       const btn = $(id);
+      if (!btn) return;
       btn.innerHTML = liked ? ICONS.heartFilled : ICONS.heart;
       btn.classList.toggle('liked', liked);
     });
@@ -481,6 +484,9 @@
     $('seekSlider').value = cur;
     $('cinemaSeekSlider').max = maxVal;
     $('cinemaSeekSlider').value = cur;
+    const pct = dur > 0 ? Math.max(0, Math.min(100, (cur / dur) * 100)) : 0;
+    const miniFill = $('miniProgressFill');
+    if (miniFill) miniFill.style.width = `${pct}%`;
     const curText = formatTime(cur);
     const durText = formatTime(dur);
     $('currentTimeLabel').textContent = curText;
@@ -1073,6 +1079,10 @@
     const q = query.trim();
     if (!q) return;
     switchView('search');
+    if ($('globalSearchInput') && $('globalSearchInput').value !== query) $('globalSearchInput').value = query;
+    if ($('mobileSearchInput') && $('mobileSearchInput').value !== query) $('mobileSearchInput').value = query;
+    $('mobileSearchClearBtn')?.classList.toggle('hidden', !q);
+    $('mobileBrowseBlock')?.classList.add('hidden');
     $('searchMeta').textContent = `Searching for "${q}"...`;
 
     const localMatches = state.localTracks.filter(
@@ -1253,24 +1263,69 @@
     });
 
     const searchInput = $('globalSearchInput');
-    searchInput.addEventListener('input', (e) => {
-      $('clearSearchBtn').classList.toggle('hidden', !e.target.value);
-      clearTimeout(searchDebounce);
-      if (e.target.value.trim().length >= 2) {
-        searchDebounce = setTimeout(() => runHybridSearch(e.target.value), 500);
+    const mobileSearchInput = $('mobileSearchInput');
+    const syncSearchVal = (val) => {
+      if (searchInput && searchInput.value !== val) searchInput.value = val;
+      if (mobileSearchInput && mobileSearchInput.value !== val) mobileSearchInput.value = val;
+      $('clearSearchBtn').classList.toggle('hidden', !val);
+      $('mobileSearchClearBtn')?.classList.toggle('hidden', !val);
+      if (!val.trim()) {
+        $('mobileBrowseBlock')?.classList.remove('hidden');
       }
-    });
+    };
+    const onSearchInputEvent = (val) => {
+      syncSearchVal(val);
+      clearTimeout(searchDebounce);
+      if (val.trim().length >= 2) {
+        searchDebounce = setTimeout(() => runHybridSearch(val), 500);
+      }
+    };
+    searchInput.addEventListener('input', (e) => onSearchInputEvent(e.target.value));
     searchInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         clearTimeout(searchDebounce);
         runHybridSearch(e.target.value);
       }
     });
+    if (mobileSearchInput) {
+      mobileSearchInput.addEventListener('input', (e) => onSearchInputEvent(e.target.value));
+      mobileSearchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          clearTimeout(searchDebounce);
+          runHybridSearch(e.target.value);
+        }
+      });
+    }
     $('clearSearchBtn').addEventListener('click', () => {
-      searchInput.value = '';
-      $('clearSearchBtn').classList.add('hidden');
+      syncSearchVal('');
       switchView('discover');
     });
+    $('mobileSearchClearBtn')?.addEventListener('click', () => {
+      syncSearchVal('');
+      $('mobileBrowseBlock')?.classList.remove('hidden');
+      $('localSearchBlock').classList.add('hidden');
+      $('ytSearchList').innerHTML = '<div class="empty-state">Tap a category or type above to search.</div>';
+      $('searchMeta').textContent = 'Search songs, artists, music videos, or local files';
+      mobileSearchInput?.focus();
+    });
+    document.querySelectorAll('.browse-tile').forEach((tile) => {
+      tile.addEventListener('click', () => {
+        if (tile.dataset.browseAction === 'library') {
+          switchView('library');
+          return;
+        }
+        const q = tile.dataset.browseQuery;
+        const m = tile.dataset.browseMode || 'all';
+        document.querySelector(`.tab-btn[data-search-mode="${m}"]`)?.click();
+        if (q) runHybridSearch(q, m);
+      });
+    });
+
+    $('mobileEqBtn')?.addEventListener('click', () => switchView('dsp'));
+    $('libEqBtn')?.addEventListener('click', () => switchView('dsp'));
+    $('mobileUpdatesBtn')?.addEventListener('click', () => switchView('updates'));
+    $('libUpdatesBtn')?.addEventListener('click', () => switchView('updates'));
+    $('mobileOpenBtn')?.addEventListener('click', () => $('openFilesQuickBtn').click());
 
     $('videoSearchTriggerBtn').addEventListener('click', () => {
       document.querySelector('.tab-btn[data-search-mode="videos"]')?.click();
@@ -1377,17 +1432,21 @@
     $('volumeSlider').addEventListener('input', (e) => updateVolumeAll(parseFloat(e.target.value)));
     $('cinemaVolSlider').addEventListener('input', (e) => updateVolumeAll(parseFloat(e.target.value)));
 
-    $('speedBtn').addEventListener('click', () => {
+    const cycleSpeed = () => {
       const nextIdx = (SPEED_STEPS.indexOf(state.playbackRate) + 1) % SPEED_STEPS.length;
       state.playbackRate = SPEED_STEPS[nextIdx];
       $('speedBtn').textContent = `${state.playbackRate}x`;
+      if ($('cinemaSpeedBtn')) $('cinemaSpeedBtn').textContent = `${state.playbackRate}x`;
       engine.setPlaybackRate(state.playbackRate);
       window.yumaAPI.ytmPlayer.setPlaybackRate(state.playbackRate);
       localVid.playbackRate = state.playbackRate;
       showToast(`Speed: ${state.playbackRate}x`);
-    });
+    };
+    $('speedBtn').addEventListener('click', cycleSpeed);
+    $('cinemaSpeedBtn')?.addEventListener('click', cycleSpeed);
 
     $('sleepTimerBtn').addEventListener('click', () => $('sleepModal').classList.remove('hidden'));
+    $('cinemaSleepBtn')?.addEventListener('click', () => $('sleepModal').classList.remove('hidden'));
     $('closeSleepModal').addEventListener('click', () => $('sleepModal').classList.add('hidden'));
     document.querySelectorAll('.sleep-opt').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -1398,6 +1457,14 @@
 
     $('quickLyricsBtn').addEventListener('click', () => switchSideTab('lyrics'));
     $('quickQueueBtn').addEventListener('click', () => switchSideTab('queue'));
+    $('cinemaQueueBtn')?.addEventListener('click', () => {
+      closeCinema();
+      switchSideTab('queue');
+      $('sidePanel')?.classList.add('mobile-open');
+    });
+    $('closeSidePanelBtn')?.addEventListener('click', () => {
+      $('sidePanel')?.classList.remove('mobile-open');
+    });
 
     $('npSwitchVideoBtn').addEventListener('click', toggleVideoMode);
     $('barVideoToggleBtn').addEventListener('click', toggleVideoMode);
@@ -1422,6 +1489,7 @@
     };
     $('npLikeBtn').addEventListener('click', toggleCurrentLike);
     $('barLikeBtn').addEventListener('click', toggleCurrentLike);
+    $('cinemaLikeBtn')?.addEventListener('click', toggleCurrentLike);
 
     $('clearQueueBtn').addEventListener('click', () => {
       state.queue = state.currentTrack ? [state.currentTrack] : [];

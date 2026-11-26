@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>YumaPlayer PC â€” by Pavithran</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>YumaPlayer PC — by Pavithran</title>
   <link rel="stylesheet" href="styles/main.css" />
   <link rel="stylesheet" href="styles/mobile.css" />
 </head>
@@ -49,8 +49,8 @@
         </div>
 
         <div class="history-nav">
-          <button id="navBackBtn" class="circle-icon-btn" title="Back">â€¹</button>
-          <button id="navFwdBtn" class="circle-icon-btn" title="Forward">â€º</button>
+          <button id="navBackBtn" class="circle-icon-btn" title="Back">‹</button>
+          <button id="navFwdBtn" class="circle-icon-btn" title="Forward">›</button>
         </div>
       </div>
 
@@ -74,9 +74,9 @@
           <span data-icon="folder"></span>
           <span>Open Media</span>
         </button>
-        <button id="minBtn" class="win-btn" title="Minimize">â€”</button>
-        <button id="maxBtn" class="win-btn" title="Maximize">â–¡</button>
-        <button id="closeBtn" class="win-btn close" title="Close">âœ•</button>
+        <button id="minBtn" class="win-btn" title="Minimize">—</button>
+        <button id="maxBtn" class="win-btn" title="Maximize">□</button>
+        <button id="closeBtn" class="win-btn close" title="Close">✕</button>
       </div>
     </header>
 
@@ -138,10 +138,16 @@
         <!-- HOME VIEW -->
         <section id="view-discover" class="view active">
           <div class="home-header">
-            <h1 id="greetingHeading">Good evening</h1>
+            <div class="home-title-cluster">
+              <div class="mobile-brand-avatar mobile-only" aria-hidden="true">Y</div>
+              <h1 id="greetingHeading">Good evening</h1>
+            </div>
             <div class="hero-actions">
-              <button class="glass-btn" id="heroAddFolderBtn">Add Folder</button>
+              <button class="glass-btn desktop-only" id="heroAddFolderBtn">Add Folder</button>
               <button class="glass-btn" id="heroRefreshFeedBtn">Refresh</button>
+              <button class="icon-btn mobile-only mobile-hdr-btn" id="mobileEqBtn" title="Equalizer &amp; Audio" data-icon="sliders"></button>
+              <button class="icon-btn mobile-only mobile-hdr-btn" id="mobileUpdatesBtn" title="Updates &amp; About" data-icon="download"></button>
+              <button class="icon-btn mobile-only mobile-hdr-btn" id="mobileOpenBtn" title="Open Files / Folder" data-icon="plus"></button>
             </div>
           </div>
 
@@ -194,14 +200,45 @@
         <!-- SEARCH VIEW -->
         <section id="view-search" class="view">
           <div class="section-header">
-            <h2>Search</h2>
+            <div class="search-head-cluster">
+              <div class="mobile-brand-avatar mobile-only" aria-hidden="true">Y</div>
+              <h2>Search</h2>
+            </div>
             <span id="searchMeta" class="muted">Search songs, artists, music videos, or local files</span>
+          </div>
+
+          <div class="mobile-search-box mobile-only">
+            <span class="search-ico" data-icon="search"></span>
+            <input id="mobileSearchInput" type="text" placeholder="What do you want to listen to?" autocomplete="off" />
+            <button id="mobileSearchClearBtn" class="clear-btn hidden" data-icon="close"></button>
           </div>
 
           <div class="tab-bar">
             <button class="tab-btn active" data-search-mode="all">All</button>
             <button class="tab-btn" data-search-mode="songs">Songs</button>
             <button class="tab-btn" data-search-mode="videos">Video Songs</button>
+          </div>
+
+          <div id="mobileBrowseBlock" class="mobile-browse-block mobile-only">
+            <h3 class="sub-heading">Start browsing</h3>
+            <div class="mobile-browse-grid">
+              <button class="browse-tile tile-crimson" data-browse-query="Top hits 2026" data-browse-mode="songs">
+                <span>Music Hits</span>
+                <small>Top charts &amp; trending</small>
+              </button>
+              <button class="browse-tile tile-ruby" data-browse-query="Official music video 4k" data-browse-mode="videos">
+                <span>Video Songs</span>
+                <small>Watch HD music videos</small>
+              </button>
+              <button class="browse-tile tile-obsidian" data-browse-query="Tamil Hindi hits" data-browse-mode="all">
+                <span>South &amp; Indie</span>
+                <small>Anirudh, Rahman &amp; more</small>
+              </button>
+              <button class="browse-tile tile-garnet" data-browse-action="library">
+                <span>Local Library</span>
+                <small>Your saved audio &amp; MP4s</small>
+              </button>
+            </div>
           </div>
 
           <div id="localSearchBlock" class="hidden">
@@ -228,10 +265,15 @@
         <!-- LIBRARY VIEW -->
         <section id="view-library" class="view">
           <div class="section-header">
-            <h2>Your Library</h2>
+            <div class="search-head-cluster">
+              <div class="mobile-brand-avatar mobile-only" aria-hidden="true">Y</div>
+              <h2>Your Library</h2>
+            </div>
             <div class="header-actions">
               <button class="spotify-btn" id="addFolderBtn">Add Folder</button>
               <button class="glass-btn" id="rescanBtn">Rescan</button>
+              <button class="icon-btn mobile-only mobile-hdr-btn" id="libEqBtn" title="Equalizer &amp; Audio" data-icon="sliders"></button>
+              <button class="icon-btn mobile-only mobile-hdr-btn" id="libUpdatesBtn" title="Updates &amp; About" data-icon="download"></button>
             </div>
           </div>
 
@@ -417,7 +459,7 @@
                   <strong>Upstream Sync</strong>
                   <p id="upstreamStatusText" class="muted">Checking MuwMx/YumaPlayer...</p>
                 </div>
-                <span id="upstreamTagBadge" class="codec-badge">â€”</span>
+                <span id="upstreamTagBadge" class="codec-badge">—</span>
               </div>
             </div>
           </div>
@@ -429,6 +471,7 @@
           <button class="side-tab active" data-side-tab="now">Now Playing</button>
           <button class="side-tab" data-side-tab="lyrics">Lyrics</button>
           <button class="side-tab" data-side-tab="queue">Queue (<span id="queueCount">0</span>)</button>
+          <button id="closeSidePanelBtn" class="icon-btn mobile-only" data-icon="close" title="Close"></button>
         </div>
 
         <div id="side-now" class="side-content active">
@@ -471,7 +514,7 @@
           <div class="queue-header">
             <span class="muted">Up Next</span>
             <div class="hero-actions">
-              <button id="endlessQueueBtn" class="chip-ctrl-btn active" title="Endless Queue Autoplay">âˆž Endless</button>
+              <button id="endlessQueueBtn" class="chip-ctrl-btn active" title="Endless Queue Autoplay">∞ Endless</button>
               <button id="clearQueueBtn" class="text-btn">Clear</button>
             </div>
           </div>
@@ -519,6 +562,9 @@
         <input id="volumeSlider" type="range" min="0" max="1" step="0.01" value="0.85" />
         <button id="cinemaBtn" class="icon-btn" title="Fullscreen Player" data-icon="expand"></button>
       </div>
+      <div class="mini-progress-track mobile-only" aria-hidden="true">
+        <div id="miniProgressFill" class="mini-progress-fill"></div>
+      </div>
     </footer>
   </div>
 
@@ -540,8 +586,13 @@
           <img id="cinemaArt" src="" alt="" class="hidden" />
           <div id="cinemaArtPh" class="np-artwork-placeholder" data-icon="music"></div>
         </div>
-        <h2 id="cinemaTitle">Not Playing</h2>
-        <p id="cinemaArtist" class="muted">â€”</p>
+        <div class="cinema-title-row">
+          <div class="cinema-title-text">
+            <h2 id="cinemaTitle">Not Playing</h2>
+            <p id="cinemaArtist" class="muted">—</p>
+          </div>
+          <button id="cinemaLikeBtn" class="icon-btn like-btn mobile-only" title="Save to Liked Songs"></button>
+        </div>
         <canvas id="cinemaVisualizer" width="420" height="70"></canvas>
       </div>
       <div class="cinema-lyrics-col" id="cinemaLyricsContainer"></div>
@@ -557,6 +608,11 @@
       </div>
 
       <div class="bar-center">
+        <div class="seek-row cinema-seek-row">
+          <span id="cinemaCurTime" class="time-label">0:00</span>
+          <input id="cinemaSeekSlider" type="range" min="0" max="100" value="0" step="0.1" />
+          <span id="cinemaDurTime" class="time-label">0:00</span>
+        </div>
         <div class="transport-buttons">
           <button id="cinemaShuffleBtn" class="icon-btn" title="Shuffle" data-icon="shuffle"></button>
           <button id="cinemaPrevBtn" class="icon-btn" title="Previous" data-icon="prev"></button>
@@ -564,16 +620,14 @@
           <button id="cinemaNextBtn" class="icon-btn" title="Next" data-icon="next"></button>
           <button id="cinemaRepeatBtn" class="icon-btn" title="Repeat" data-icon="repeat"></button>
         </div>
-        <div class="seek-row">
-          <span id="cinemaCurTime" class="time-label">0:00</span>
-          <input id="cinemaSeekSlider" type="range" min="0" max="100" value="0" step="0.1" />
-          <span id="cinemaDurTime" class="time-label">0:00</span>
-        </div>
       </div>
 
       <div class="bar-right">
-        <span class="icon-btn" data-icon="volume" style="cursor:default"></span>
-        <input id="cinemaVolSlider" type="range" min="0" max="1" step="0.01" value="0.85" />
+        <button id="cinemaSpeedBtn" class="chip-ctrl-btn mobile-only" title="Playback Speed">1.0x</button>
+        <button id="cinemaQueueBtn" class="chip-ctrl-btn mobile-only" title="View Queue">Queue</button>
+        <button id="cinemaSleepBtn" class="chip-ctrl-btn mobile-only" title="Sleep Timer">Sleep</button>
+        <span class="icon-btn desktop-only" data-icon="volume" style="cursor:default"></span>
+        <input id="cinemaVolSlider" class="desktop-only" type="range" min="0" max="1" step="0.01" value="0.85" />
       </div>
     </div>
   </div>
@@ -615,4 +669,3 @@
   <script src="scripts/app.js"></script>
 </body>
 </html>
-

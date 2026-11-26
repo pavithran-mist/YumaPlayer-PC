@@ -808,6 +808,7 @@ html, body {
 .text-btn:hover { color: #fff; }
 .muted { color: var(--text-secondary); font-size: 12.5px; }
 .hidden { display: none !important; }
+.mobile-only { display: none !important; }
 .empty-state { padding: 32px; text-align: center; color: var(--text-secondary); font-size: 13px; }
 
 .modal { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75); display: flex; align-items: center; justify-content: center; z-index: 60; }
