@@ -1,6 +1,8 @@
 # YumaPlayer PC
 
-A native Windows desktop music player inspired by [MuwMx/YumaPlayer](https://github.com/MuwMx/YumaPlayer), featuring a **Fluid Glassmorphism UI**, **Telegram-style Floating Island Dock**, **YouTube Music streaming**, **Hi-Res local FLAC/MP3/WAV playback**, **Synced Lyrics**, **SponsorBlock skipping**, **Dual-Deck Web Audio DSP**, and **GitHub OTA Auto-Updates**.
+**Created by Pavithran**
+
+A native Windows desktop music & video player inspired by [MuwMx/YumaPlayer](https://github.com/MuwMx/YumaPlayer), featuring a sleek dark desktop interface, YouTube Music & Music Video streaming, Hi-Res local FLAC/MP3/WAV/MP4 playback, Synced Lyrics, SponsorBlock skipping, Dual-Deck Web Audio DSP, and in-app OTA Auto-Updates.
 
 ## Features
 - **Hybrid Audio Library:** Stream from YouTube Music or scan local folders on any SSD/HDD (`FLAC`, `WAV`, `MP3`, `M4A`, `OGG`, `OPUS`, `ALAC`).

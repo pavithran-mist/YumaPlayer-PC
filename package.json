@@ -1,7 +1,7 @@
 {
   "name": "yumaplayer-pc",
-  "version": "1.1.0",
-  "description": "YumaPlayer PC - Spotify-Inspired Glassmorphism Music & Video Player with Hi-Res Local FLAC, YouTube Music, Synced Lyrics & OTA Updates",
+  "version": "1.2.0",
+  "description": "YumaPlayer PC - Hybrid Music & Video Desktop Player created by Pavithran",
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
@@ -14,11 +14,9 @@
     "video-player",
     "youtube-music",
     "flac",
-    "electron",
-    "spotify-ui",
-    "glassmorphism"
+    "electron"
   ],
-  "author": "pavithran-mist",
+  "author": "Pavithran",
   "license": "GPL-3.0",
   "dependencies": {
     "electron-updater": "^6.6.2",
@@ -30,8 +28,9 @@
     "electron-builder": "^26.0.12"
   },
   "build": {
-    "appId": "com.yumaplayer.pc",
+    "appId": "com.pavithran.yumaplayer.pc",
     "productName": "YumaPlayer PC",
+    "copyright": "Copyright © 2026 Pavithran",
     "directories": {
       "output": "dist",
       "buildResources": "build"

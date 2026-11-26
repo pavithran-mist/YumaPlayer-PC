@@ -3,24 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>YumaPlayer PC</title>
+  <title>YumaPlayer PC — by Pavithran</title>
   <link rel="stylesheet" href="styles/main.css" />
 </head>
 <body>
-  <!-- Live Ambient Dynamic Backdrop -->
-  <div class="ambient-backdrop" id="ambientBackdrop">
-    <div class="ambient-orb orb-1" id="orb1"></div>
-    <div class="ambient-orb orb-2" id="orb2"></div>
-    <div class="ambient-orb orb-3" id="orb3"></div>
-  </div>
-
   <div class="app-shell">
-    <!-- Spotify-Style Top Window Bar -->
+    <!-- Top Window Bar -->
     <header class="titlebar">
       <div class="titlebar-left">
         <div class="brand-logo">
           <svg class="brand-svg" viewBox="0 0 40 40" fill="none">
-            <rect x="2" y="2" width="36" height="36" rx="11" fill="url(#yumaGradBg)" stroke="url(#yumaGradRing)" stroke-width="2"/>
+            <rect x="2" y="2" width="36" height="36" rx="10" fill="url(#yumaGradBg)" stroke="url(#yumaGradRing)" stroke-width="2"/>
             <circle cx="20" cy="20" r="12" stroke="url(#yumaGradRing)" stroke-width="2.2" stroke-dasharray="50 8" stroke-linecap="round"/>
             <path d="M14.5 14L20 20.5M25.5 14L20 20.5M20 20.5V27.5" stroke="#F8FAFF" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
             <circle cx="25.5" cy="14" r="2.6" fill="#1ED760"/>
@@ -34,7 +27,7 @@
             </defs>
           </svg>
           <span class="brand-name">YumaPlayer</span>
-          <span class="brand-badge">PC</span>
+          <span class="brand-by">by Pavithran</span>
         </div>
 
         <div class="history-nav">
@@ -44,17 +37,14 @@
       </div>
 
       <div class="titlebar-search">
-        <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="11" cy="11" r="8"></circle>
-          <path d="m21 21-4.3-4.3"></path>
-        </svg>
+        <span class="icon-sm" data-icon="search"></span>
         <input
           id="globalSearchInput"
           type="text"
-          placeholder="What do you want to play? (Songs, Video Songs, FLAC...)"
+          placeholder="What do you want to play?"
           autocomplete="off"
         />
-        <button id="clearSearchBtn" class="icon-btn hidden" title="Clear search">✕</button>
+        <button id="clearSearchBtn" class="icon-btn hidden" title="Clear" data-icon="close"></button>
       </div>
 
       <div class="titlebar-controls">
@@ -63,98 +53,93 @@
           <span id="updatePillText">Update Ready</span>
         </button>
         <button id="openFilesQuickBtn" class="pill-btn" title="Open Local Audio or Video Files">
-          + Open Media
+          <span data-icon="folder"></span>
+          <span>Open Media</span>
         </button>
-        <button id="minBtn" class="win-btn" title="Minimize">─</button>
+        <button id="minBtn" class="win-btn" title="Minimize">—</button>
         <button id="maxBtn" class="win-btn" title="Maximize">□</button>
         <button id="closeBtn" class="win-btn close" title="Close">✕</button>
       </div>
     </header>
 
-    <!-- 3-Column Spotify + Glassmorphism Workspace -->
+    <!-- 3-Column Spotify Desktop Workspace -->
     <div class="workspace">
       <!-- Left Sidebar -->
-      <aside class="left-sidebar glass-panel">
+      <aside class="left-sidebar">
         <nav class="sidebar-nav">
           <button class="side-nav-item active" data-view="discover">
-            <span class="nav-ico">⌂</span>
+            <span class="nav-ico" data-icon="home"></span>
             <span>Home</span>
           </button>
           <button class="side-nav-item" data-view="search">
-            <span class="nav-ico">⌕</span>
+            <span class="nav-ico" data-icon="search"></span>
             <span>Search</span>
           </button>
           <button class="side-nav-item" data-view="videos">
-            <span class="nav-ico">▶</span>
+            <span class="nav-ico" data-icon="video"></span>
             <span>Video Songs</span>
           </button>
           <button class="side-nav-item" data-view="library">
-            <span class="nav-ico">▤</span>
+            <span class="nav-ico" data-icon="library"></span>
             <span>Your Library</span>
           </button>
           <button class="side-nav-item" data-view="dsp">
-            <span class="nav-ico">≈</span>
-            <span>Audio &amp; DSP</span>
+            <span class="nav-ico" data-icon="sliders"></span>
+            <span>Equalizer &amp; Audio</span>
           </button>
           <button class="side-nav-item" data-view="updates">
-            <span class="nav-ico">↻</span>
-            <span>Updates</span>
+            <span class="nav-ico" data-icon="download"></span>
+            <span>Updates &amp; About</span>
           </button>
         </nav>
 
         <div class="sidebar-divider"></div>
 
         <div class="sidebar-library-head">
-          <span>PLAYLISTS</span>
-          <button id="sidebarNewPlBtn" class="icon-btn" title="Create Playlist">+</button>
+          <span>YOUR LIBRARY</span>
+          <button id="sidebarNewPlBtn" class="icon-btn" title="Create Playlist" data-icon="plus"></button>
         </div>
 
         <div class="sidebar-playlists" id="sidebarPlaylists">
           <div class="sidebar-pl-item" id="sidebarLikedItem">
-            <div class="pl-thumb liked-grad">♥</div>
+            <div class="pl-thumb liked-grad" data-icon="heartFilled"></div>
             <div class="pl-text">
               <strong>Liked Songs</strong>
-              <span id="sidebarLikedCount" class="muted">0 tracks</span>
+              <span id="sidebarLikedCount" class="muted">0 songs</span>
             </div>
           </div>
           <div id="sidebarCustomPlaylists"></div>
         </div>
+
+        <div class="sidebar-footer">
+          <span>Created by <strong>Pavithran</strong></span>
+          <span id="sidebarVersion">v1.2.0</span>
+        </div>
       </aside>
 
       <!-- Center Main Stage -->
-      <main class="main-content glass-panel" id="mainContent">
-        <!-- HOME / DISCOVER VIEW -->
+      <main class="main-content" id="mainContent">
+        <!-- HOME VIEW -->
         <section id="view-discover" class="view active">
-          <div class="home-top-row">
-            <div>
-              <h1 id="greetingHeading">Good evening</h1>
-              <p class="muted">Spotify-inspired discovery, lossless local audio &amp; music videos in one glass player.</p>
-            </div>
+          <div class="home-header">
+            <h1 id="greetingHeading">Good evening</h1>
             <div class="hero-actions">
-              <button class="spotify-btn" id="heroAddFolderBtn">+ Add Folder</button>
+              <button class="glass-btn" id="heroAddFolderBtn">Add Folder</button>
               <button class="glass-btn" id="heroRefreshFeedBtn">Refresh</button>
             </div>
           </div>
 
-          <!-- Quick Picks 6-card Grid -->
-          <div id="quickPicksGrid" class="quick-picks-grid"></div>
-
-          <!-- Hero Visual Banner -->
-          <div class="hero-card" id="heroCard">
-            <div class="hero-info">
-              <span class="hero-tag">YUMA AUDIO ENGINE • DUAL-DECK + VIDEO STAGE</span>
-              <h2>Hi-Res Sound &amp; Live Visual Effects</h2>
-              <p>
-                Stream ad-skipped tracks &amp; HD video songs or drop local FLAC, WAV, MP3, and MP4 files with real-time 10-band EQ.
-              </p>
-            </div>
-            <div class="hero-visual">
-              <canvas id="heroVisualizer" width="340" height="96"></canvas>
-            </div>
+          <div class="filter-chips">
+            <button class="filter-chip active" data-home-filter="all">All</button>
+            <button class="filter-chip" data-home-filter="music">Music</button>
+            <button class="filter-chip" data-home-filter="videos">Video Songs</button>
+            <button class="filter-chip" data-home-filter="local">Local Files</button>
           </div>
 
+          <div id="quickPicksGrid" class="quick-picks-grid"></div>
+
           <div id="discoveryShelves" class="shelves-container">
-            <div class="empty-state">Loading discovery mixes...</div>
+            <div class="empty-state">Loading mixes...</div>
           </div>
         </section>
 
@@ -162,11 +147,11 @@
         <section id="view-videos" class="view">
           <div class="section-header">
             <div>
-              <h2>Video Songs Stage</h2>
-              <span class="muted">Play YouTube Music Videos or local MP4 / MKV / WebM video songs</span>
+              <h2>Video Songs</h2>
+              <span class="muted">YouTube music videos and local MP4 / MKV / WebM files</span>
             </div>
             <div class="header-actions">
-              <button id="videoSearchTriggerBtn" class="spotify-btn">Search Music Videos</button>
+              <button id="videoSearchTriggerBtn" class="spotify-btn">Find Music Videos</button>
               <button id="videoTheaterBtn" class="glass-btn">Cinema Mode</button>
             </div>
           </div>
@@ -175,14 +160,18 @@
             <div id="videoStageHost" class="video-stage-host">
               <video id="localVideoPlayer" class="local-video-player hidden" playsinline></video>
               <div id="videoPlaceholder" class="video-placeholder">
-                <div class="video-ph-icon">🎬</div>
-                <h3>No Video Song Active</h3>
-                <p class="muted">Search for a Music Video or click the <strong>🎬 Video</strong> toggle on any YouTube track.</p>
+                <div class="video-ph-icon" data-icon="video"></div>
+                <h3>Select a video song to watch</h3>
+                <p class="muted">Play any music video below or toggle Video mode from the player bar.</p>
               </div>
             </div>
           </div>
 
           <h3 class="sub-heading">Recommended &amp; Local Video Songs</h3>
+          <div class="track-table-head">
+            <span>#</span><span>Title</span><span>Source</span><span>Format</span>
+            <span class="col-dur" data-icon="clock"></span>
+          </div>
           <div id="videoSongsList" class="track-list"></div>
         </section>
 
@@ -190,7 +179,7 @@
         <section id="view-search" class="view">
           <div class="section-header">
             <h2>Search</h2>
-            <span id="searchMeta" class="muted">Search YouTube Music, Music Videos, or local library</span>
+            <span id="searchMeta" class="muted">Search songs, artists, music videos, or local files</span>
           </div>
 
           <div class="tab-bar">
@@ -200,14 +189,22 @@
           </div>
 
           <div id="localSearchBlock" class="hidden">
-            <h3 class="sub-heading">Matching Local Files</h3>
+            <h3 class="sub-heading">In Your Local Files</h3>
+            <div class="track-table-head">
+              <span>#</span><span>Title</span><span>Album</span><span>Format</span>
+              <span class="col-dur" data-icon="clock"></span>
+            </div>
             <div id="localSearchList" class="track-list"></div>
           </div>
 
           <div id="ytSearchBlock">
-            <h3 class="sub-heading">Online Results</h3>
+            <h3 class="sub-heading">Top Results</h3>
+            <div class="track-table-head">
+              <span>#</span><span>Title</span><span>Album</span><span>Format</span>
+              <span class="col-dur" data-icon="clock"></span>
+            </div>
             <div id="ytSearchList" class="track-list">
-              <div class="empty-state">Search for any song, artist, or music video above.</div>
+              <div class="empty-state">Type in the search bar above to find songs or music videos.</div>
             </div>
           </div>
         </section>
@@ -217,7 +214,7 @@
           <div class="section-header">
             <h2>Your Library</h2>
             <div class="header-actions">
-              <button class="spotify-btn" id="addFolderBtn">+ Add Music/Video Folder</button>
+              <button class="spotify-btn" id="addFolderBtn">Add Folder</button>
               <button class="glass-btn" id="rescanBtn">Rescan</button>
             </div>
           </div>
@@ -232,30 +229,42 @@
 
           <div id="lib-panel-local" class="lib-panel active">
             <div id="folderChips" class="folder-chips"></div>
-            <div id="localTracksList" class="track-list">
-              <div class="empty-state">
-                No local folders added yet. Click <strong>+ Add Music/Video Folder</strong> or drag &amp; drop files anywhere!
-              </div>
+            <div class="track-table-head">
+              <span>#</span><span>Title</span><span>Album</span><span>Format</span>
+              <span class="col-dur" data-icon="clock"></span>
             </div>
+            <div id="localTracksList" class="track-list"></div>
           </div>
 
           <div id="lib-panel-localVideos" class="lib-panel">
+            <div class="track-table-head">
+              <span>#</span><span>Title</span><span>Folder</span><span>Format</span>
+              <span class="col-dur" data-icon="clock"></span>
+            </div>
             <div id="localVideosList" class="track-list"></div>
           </div>
 
           <div id="lib-panel-liked" class="lib-panel">
+            <div class="track-table-head">
+              <span>#</span><span>Title</span><span>Album</span><span>Format</span>
+              <span class="col-dur" data-icon="clock"></span>
+            </div>
             <div id="likedTracksList" class="track-list"></div>
           </div>
 
           <div id="lib-panel-playlists" class="lib-panel">
             <div class="playlist-creator">
-              <input id="newPlaylistInput" type="text" placeholder="New playlist name..." />
-              <button id="createPlaylistBtn" class="spotify-btn">Create Playlist</button>
+              <input id="newPlaylistInput" type="text" placeholder="Create a new playlist..." />
+              <button id="createPlaylistBtn" class="spotify-btn">Create</button>
             </div>
             <div id="playlistsContainer" class="playlists-grid"></div>
           </div>
 
           <div id="lib-panel-history" class="lib-panel">
+            <div class="track-table-head">
+              <span>#</span><span>Title</span><span>Album</span><span>Format</span>
+              <span class="col-dur" data-icon="clock"></span>
+            </div>
             <div id="historyTracksList" class="track-list"></div>
           </div>
         </section>
@@ -263,17 +272,17 @@
         <!-- AUDIO & DSP VIEW -->
         <section id="view-dsp" class="view">
           <div class="section-header">
-            <h2>Audio &amp; DSP Engine</h2>
-            <span class="muted">Real-time 10-Band EQ, Crossfade &amp; Playback Enhancements</span>
+            <h2>Equalizer &amp; Playback</h2>
+            <span class="muted">Audio settings and crossfade</span>
           </div>
 
           <div class="dsp-grid">
             <div class="dsp-card">
-              <h3>Playback &amp; Visual Effects</h3>
+              <h3>Playback</h3>
               <div class="control-row">
                 <div>
-                  <strong>Crossfade Duration</strong>
-                  <p class="muted">Smooth equal-power transition between local tracks</p>
+                  <strong>Crossfade songs</strong>
+                  <p class="muted">Smooth transition between local audio tracks</p>
                 </div>
                 <div class="range-wrap">
                   <input id="crossfadeSlider" type="range" min="0" max="12" step="1" value="4" />
@@ -283,8 +292,8 @@
 
               <div class="control-row">
                 <div>
-                  <strong>Smart Bass-Swap Filter</strong>
-                  <p class="muted">Attenuates outgoing sub-bass during transitions</p>
+                  <strong>Smart Bass-Swap</strong>
+                  <p class="muted">Balances low frequencies during crossfade transitions</p>
                 </div>
                 <label class="switch">
                   <input id="bassSwapToggle" type="checkbox" checked />
@@ -294,8 +303,8 @@
 
               <div class="control-row">
                 <div>
-                  <strong>SponsorBlock Auto-Skip</strong>
-                  <p class="muted">Automatically skips non-music intros, outros &amp; sponsors</p>
+                  <strong>Skip non-music segments (SponsorBlock)</strong>
+                  <p class="muted">Automatically skips intros, outros, and sponsor breaks</p>
                 </div>
                 <label class="switch">
                   <input id="sponsorBlockToggle" type="checkbox" checked />
@@ -305,8 +314,8 @@
 
               <div class="control-row">
                 <div>
-                  <strong>Live Ambient Backdrop &amp; Aura</strong>
-                  <p class="muted">Dynamic glass lighting tinted from album artwork</p>
+                  <strong>Dynamic artwork tint</strong>
+                  <p class="muted">Subtly adapts the top background tint to the current cover art</p>
                 </div>
                 <label class="switch">
                   <input id="ambientToggle" type="checkbox" checked />
@@ -318,8 +327,8 @@
             <div class="dsp-card eq-card">
               <div class="eq-header">
                 <div>
-                  <h3>10-Band Equalizer (Local Audio)</h3>
-                  <p class="muted">Shape frequencies (-12 dB to +12 dB)</p>
+                  <h3>10-Band Equalizer</h3>
+                  <p class="muted">Applies to local audio playback (-12 dB to +12 dB)</p>
                 </div>
                 <select id="eqPresetSelect" class="glass-select">
                   <option value="Flat">Flat</option>
@@ -336,22 +345,22 @@
           </div>
         </section>
 
-        <!-- IN-APP UPDATES VIEW -->
+        <!-- UPDATES & ABOUT VIEW -->
         <section id="view-updates" class="view">
           <div class="section-header">
-            <h2>In-App Updates &amp; Upstream Sync</h2>
-            <span class="muted">Downloads &amp; installs updates directly inside YumaPlayer PC — no browser needed</span>
+            <h2>Updates &amp; About</h2>
+            <span class="muted">In-app software updates and creator information</span>
           </div>
 
           <div class="dsp-grid">
             <div class="dsp-card">
               <div class="control-row">
                 <div>
-                  <h3>YumaPlayer PC</h3>
-                  <p id="updateStatusText" class="muted">Checking GitHub Releases...</p>
+                  <h3>Software Update</h3>
+                  <p id="updateStatusText" class="muted">Checking for updates...</p>
                 </div>
                 <div class="hero-actions">
-                  <button id="checkUpdatesBtn" class="glass-btn">Check Updates</button>
+                  <button id="checkUpdatesBtn" class="glass-btn">Check for Updates</button>
                   <button id="downloadUpdateBtn" class="spotify-btn hidden">Download Update</button>
                   <button id="installUpdateBtn" class="spotify-btn hidden">Restart &amp; Install</button>
                 </div>
@@ -368,10 +377,18 @@
             </div>
 
             <div class="dsp-card">
+              <h3>About YumaPlayer PC</h3>
               <div class="control-row">
                 <div>
-                  <strong>Upstream MuwMx/YumaPlayer Tracker</strong>
-                  <p id="upstreamStatusText" class="muted">Checking upstream Android release...</p>
+                  <strong>Creator</strong>
+                  <p class="muted">Designed and built by Pavithran</p>
+                </div>
+                <span class="badge">Pavithran</span>
+              </div>
+              <div class="control-row">
+                <div>
+                  <strong>Upstream Sync</strong>
+                  <p id="upstreamStatusText" class="muted">Checking MuwMx/YumaPlayer...</p>
                 </div>
                 <span id="upstreamTagBadge" class="codec-badge">—</span>
               </div>
@@ -380,8 +397,8 @@
         </section>
       </main>
 
-      <!-- Right Drawer: Now Playing + Halo Visuals + Lyrics + Queue -->
-      <aside class="side-panel glass-panel" id="sidePanel">
+      <!-- Right Panel: Now Playing, Lyrics, Queue -->
+      <aside class="side-panel" id="sidePanel">
         <div class="side-tabs">
           <button class="side-tab active" data-side-tab="now">Now Playing</button>
           <button class="side-tab" data-side-tab="lyrics">Lyrics</button>
@@ -393,26 +410,26 @@
             <div class="np-halo" id="npHalo"></div>
             <div class="np-artwork-wrap" id="npArtworkWrap">
               <img id="npArtwork" src="" alt="Album Art" class="np-artwork hidden" />
-              <div id="npArtworkPlaceholder" class="np-artwork-placeholder">♪</div>
+              <div id="npArtworkPlaceholder" class="np-artwork-placeholder" data-icon="music"></div>
             </div>
           </div>
 
           <div class="np-meta">
             <div class="np-title-row">
               <div>
-                <h3 id="npTitle">Nothing Playing</h3>
-                <p id="npArtist" class="muted">Pick a song or music video</p>
+                <h3 id="npTitle">Not Playing</h3>
+                <p id="npArtist" class="muted">Select a track to play</p>
               </div>
-              <button id="npLikeBtn" class="icon-btn like-btn" title="Like">♡</button>
+              <button id="npLikeBtn" class="icon-btn like-btn" title="Save to Liked Songs"></button>
             </div>
             <div class="np-badges">
               <span id="npCodecBadge" class="codec-badge">IDLE</span>
               <span id="npSponsorBadge" class="codec-badge sponsor hidden">SponsorBlock</span>
-              <button id="npSwitchVideoBtn" class="mini-mode-btn hidden" title="Watch Video Song">🎬 Watch Video</button>
+              <button id="npSwitchVideoBtn" class="mini-mode-btn hidden"></button>
             </div>
           </div>
 
-          <canvas id="sideVisualizer" width="300" height="80" class="side-visualizer"></canvas>
+          <canvas id="sideVisualizer" width="282" height="58" class="side-visualizer"></canvas>
         </div>
 
         <div id="side-lyrics" class="side-content">
@@ -427,35 +444,35 @@
         <div id="side-queue" class="side-content">
           <div class="queue-header">
             <span class="muted">Up Next</span>
-            <button id="clearQueueBtn" class="text-btn">Clear</button>
+            <button id="clearQueueBtn" class="text-btn">Clear queue</button>
           </div>
           <div id="queueList" class="queue-list"></div>
         </div>
       </aside>
     </div>
 
-    <!-- Bottom Spotify-Style Player Bar -->
-    <footer class="player-bar glass-panel">
+    <!-- Bottom Player Bar -->
+    <footer class="player-bar">
       <div class="bar-left">
-        <div class="bar-thumb-wrap" id="barThumbWrap">
+        <div class="bar-thumb-wrap">
           <img id="barThumb" src="" alt="" class="bar-thumb hidden" />
-          <div id="barThumbPlaceholder" class="bar-thumb-ph">♪</div>
+          <div id="barThumbPlaceholder" class="bar-thumb-ph" data-icon="music"></div>
         </div>
         <div class="bar-track-info">
           <div id="barTitle" class="bar-title">YumaPlayer PC</div>
-          <div id="barArtist" class="bar-artist muted">Ready to play</div>
+          <div id="barArtist" class="bar-artist muted">by Pavithran</div>
         </div>
-        <button id="barLikeBtn" class="icon-btn like-btn" title="Save to Liked Songs">♡</button>
-        <button id="barVideoToggleBtn" class="icon-btn hidden" title="Switch Audio / Video Mode">🎬</button>
+        <button id="barLikeBtn" class="icon-btn like-btn" title="Save to Liked Songs"></button>
+        <button id="barVideoToggleBtn" class="icon-btn hidden" title="Switch Audio / Video" data-icon="video"></button>
       </div>
 
       <div class="bar-center">
         <div class="transport-buttons">
-          <button id="shuffleBtn" class="icon-btn" title="Shuffle">⇄</button>
-          <button id="prevBtn" class="icon-btn" title="Previous">⏮</button>
-          <button id="playPauseBtn" class="play-btn" title="Play / Pause">▶</button>
-          <button id="nextBtn" class="icon-btn" title="Next">⏭</button>
-          <button id="repeatBtn" class="icon-btn" title="Repeat (Off / All / One)">↻</button>
+          <button id="shuffleBtn" class="icon-btn" title="Shuffle" data-icon="shuffle"></button>
+          <button id="prevBtn" class="icon-btn" title="Previous" data-icon="prev"></button>
+          <button id="playPauseBtn" class="play-btn" title="Play / Pause"></button>
+          <button id="nextBtn" class="icon-btn" title="Next" data-icon="next"></button>
+          <button id="repeatBtn" class="icon-btn" title="Repeat" data-icon="repeat"></button>
         </div>
         <div class="seek-row">
           <span id="currentTimeLabel" class="time-label">0:00</span>
@@ -466,42 +483,42 @@
 
       <div class="bar-right">
         <button id="speedBtn" class="chip-ctrl-btn" title="Playback Speed">1.0x</button>
-        <button id="sleepTimerBtn" class="chip-ctrl-btn" title="Sleep Timer">🌙</button>
-        <button id="quickLyricsBtn" class="icon-btn" title="Lyrics">🎙</button>
-        <button id="quickQueueBtn" class="icon-btn" title="Queue">☰</button>
-        <span class="vol-icon">🔊</span>
+        <button id="sleepTimerBtn" class="chip-ctrl-btn" title="Sleep Timer"></button>
+        <button id="quickLyricsBtn" class="icon-btn" title="Lyrics" data-icon="lyrics"></button>
+        <button id="quickQueueBtn" class="icon-btn" title="Queue" data-icon="queue"></button>
+        <span class="icon-btn" data-icon="volume" style="cursor:default"></span>
         <input id="volumeSlider" type="range" min="0" max="1" step="0.01" value="0.85" />
-        <button id="cinemaBtn" class="icon-btn" title="Cinema / Fullscreen Now Playing">⛶</button>
+        <button id="cinemaBtn" class="icon-btn" title="Fullscreen Cinema Mode" data-icon="expand"></button>
       </div>
     </footer>
   </div>
 
-  <!-- Cinema / Fullscreen Now Playing Overlay -->
+  <!-- Cinema / Fullscreen Overlay -->
   <div id="cinemaOverlay" class="cinema-overlay hidden">
     <div class="cinema-top">
       <span id="cinemaBadge" class="codec-badge">NOW PLAYING</span>
-      <button id="closeCinemaBtn" class="glass-btn">Exit Cinema ✕</button>
+      <button id="closeCinemaBtn" class="glass-btn">Exit Fullscreen</button>
     </div>
     <div class="cinema-body">
       <div class="cinema-art-col">
-        <div class="cinema-art-wrap" id="cinemaArtWrap">
+        <div class="cinema-art-wrap">
           <img id="cinemaArt" src="" alt="" class="hidden" />
-          <div id="cinemaArtPh" class="np-artwork-placeholder">♪</div>
+          <div id="cinemaArtPh" class="np-artwork-placeholder" data-icon="music"></div>
         </div>
-        <h2 id="cinemaTitle">Nothing Playing</h2>
+        <h2 id="cinemaTitle">Not Playing</h2>
         <p id="cinemaArtist" class="muted">—</p>
-        <canvas id="cinemaVisualizer" width="440" height="86"></canvas>
+        <canvas id="cinemaVisualizer" width="420" height="72"></canvas>
       </div>
       <div class="cinema-lyrics-col" id="cinemaLyricsContainer"></div>
     </div>
   </div>
 
-  <!-- Playlist Picker Modal -->
+  <!-- Playlist Modal -->
   <div id="playlistModal" class="modal hidden">
-    <div class="modal-card glass-panel">
+    <div class="modal-card">
       <div class="modal-header">
         <h3>Add to Playlist</h3>
-        <button id="closePlaylistModal" class="icon-btn">✕</button>
+        <button id="closePlaylistModal" class="icon-btn" data-icon="close"></button>
       </div>
       <div id="playlistModalList" class="modal-list"></div>
     </div>
@@ -509,10 +526,10 @@
 
   <!-- Sleep Timer Modal -->
   <div id="sleepModal" class="modal hidden">
-    <div class="modal-card glass-panel">
+    <div class="modal-card">
       <div class="modal-header">
         <h3>Sleep Timer</h3>
-        <button id="closeSleepModal" class="icon-btn">✕</button>
+        <button id="closeSleepModal" class="icon-btn" data-icon="close"></button>
       </div>
       <div class="modal-list">
         <button class="glass-btn sleep-opt" data-mins="0">Off</button>
@@ -524,9 +541,9 @@
     </div>
   </div>
 
-  <!-- Toast notification -->
   <div id="toast" class="toast hidden"></div>
 
+  <script src="scripts/icons.js"></script>
   <script src="scripts/lrcParser.js"></script>
   <script src="scripts/audioEngine.js"></script>
   <script src="scripts/app.js"></script>

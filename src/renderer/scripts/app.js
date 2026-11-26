@@ -1,6 +1,7 @@
 (function () {
   const { parseLrc, findActiveLineIndex } = window.LrcParser;
   const { EQ_FREQUENCIES, EQ_PRESETS, DualDeckAudioEngine } = window.YumaAudio;
+  const ICONS = window.YumaIcons;
 
   const SPEED_STEPS = [1.0, 1.25, 1.5, 0.75];
 
@@ -12,6 +13,7 @@
     ytSearchResults: [],
     videoResults: [],
     searchMode: 'all',
+    homeFilter: 'all',
     queue: [],
     queueIndex: -1,
     currentTrack: null,
@@ -37,16 +39,26 @@
   let engine = null;
   let toastTimer = null;
   let searchDebounce = null;
-  let visualizerRaf = null;
 
   const $ = (id) => document.getElementById(id);
+
+  function hydrateIcons() {
+    document.querySelectorAll('[data-icon]').forEach((el) => {
+      const name = el.getAttribute('data-icon');
+      if (ICONS[name]) el.innerHTML = ICONS[name];
+    });
+    $('playPauseBtn').innerHTML = ICONS.play;
+    $('sleepTimerBtn').innerHTML = ICONS.moon;
+    $('npLikeBtn').innerHTML = ICONS.heart;
+    $('barLikeBtn').innerHTML = ICONS.heart;
+  }
 
   function showToast(msg) {
     const el = $('toast');
     el.textContent = msg;
     el.classList.remove('hidden');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => el.classList.add('hidden'), 2800);
+    toastTimer = setTimeout(() => el.classList.add('hidden'), 2600);
   }
 
   function formatTime(secs) {
@@ -66,8 +78,8 @@
 
   function updateGreeting() {
     const hr = new Date().getHours();
-    const label = hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening';
-    $('greetingHeading').textContent = label;
+    $('greetingHeading').textContent =
+      hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening';
   }
 
   function getTrackStreamUrl(track) {
@@ -130,10 +142,9 @@
   }
 
   function updateAmbientFromArtwork(src) {
-    if (!state.store?.settings?.ambientBackdrop) return;
-    if (!src) {
-      document.documentElement.style.setProperty('--accent', '#1ed760');
-      document.documentElement.style.setProperty('--accent-2', '#6366f1');
+    if (!state.store?.settings?.ambientBackdrop || !src) {
+      document.documentElement.style.setProperty('--wash-color', 'rgba(29, 185, 84, 0.24)');
+      document.documentElement.style.setProperty('--wash-secondary', 'rgba(70, 90, 140, 0.14)');
       return;
     }
     const img = new Image();
@@ -148,20 +159,19 @@
         const data = ctx.getImageData(0, 0, 16, 16).data;
         let r = 0, g = 0, b = 0, count = 0;
         for (let i = 0; i < data.length; i += 4) {
-          if (data[i] + data[i + 1] + data[i + 2] > 70) {
+          if (data[i] + data[i + 1] + data[i + 2] > 65) {
             r += data[i]; g += data[i + 1]; b += data[i + 2]; count++;
           }
         }
         if (count > 0) {
-          r = Math.min(255, Math.round(r / count) + 25);
-          g = Math.min(255, Math.round(g / count) + 20);
-          b = Math.min(255, Math.round(b / count) + 35);
-          document.documentElement.style.setProperty('--accent', `rgb(${r}, ${g}, ${b})`);
-          document.documentElement.style.setProperty('--accent-2', `rgb(${Math.max(60, b)}, ${Math.max(50, r)}, ${Math.min(255, g + 45)})`);
-          document.documentElement.style.setProperty('--accent-glow', `rgba(${r}, ${g}, ${b}, 0.42)`);
+          r = Math.min(240, Math.round(r / count));
+          g = Math.min(240, Math.round(g / count));
+          b = Math.min(240, Math.round(b / count));
+          document.documentElement.style.setProperty('--wash-color', `rgba(${r}, ${g}, ${b}, 0.34)`);
+          document.documentElement.style.setProperty('--wash-secondary', `rgba(${r}, ${g}, ${b}, 0.10)`);
         }
       } catch {
-        // ignore cross-origin canvas errors
+        // ignore cross-origin canvas restrictions
       }
     };
     img.src = src;
@@ -169,9 +179,9 @@
 
   function setPlayingUiState(playing) {
     state.isPlaying = playing;
-    $('playPauseBtn').textContent = playing ? '⏸' : '▶';
-    $('npArtworkWrap').classList.toggle('playing-pulse', playing);
+    $('playPauseBtn').innerHTML = playing ? ICONS.pause : ICONS.play;
     renderAllLists();
+    renderQueue();
   }
 
   async function playTrackAtIndex(index, { useCrossfade = false, forceVideo = null } = {}) {
@@ -227,7 +237,7 @@
       renderHistory();
       renderQuickPicks();
     } catch (err) {
-      showToast(`Playback failed: ${err.message || 'Check connection or media file'}`);
+      showToast(`Playback failed: ${err.message || 'Check connection or file'}`);
     }
 
     loadTrackExtras(track);
@@ -241,7 +251,7 @@
   }
 
   async function loadTrackExtras(track) {
-    $('lyricsContainer').innerHTML = '<div class="empty-state">Searching synced lyrics...</div>';
+    $('lyricsContainer').innerHTML = '<div class="empty-state">Searching lyrics...</div>';
     $('cinemaLyricsContainer').innerHTML = '<div class="empty-state">Searching lyrics...</div>';
     $('lyricsSourceBadge').textContent = 'Lyrics';
     state.lyricsLines = [];
@@ -256,13 +266,13 @@
         $('lyricsSourceBadge').textContent = `Synced Lyrics • ${res.source}`;
         renderLyricsLines();
       } else if (res.plainLyrics) {
-        $('lyricsSourceBadge').textContent = `Plain Lyrics • ${res.source}`;
-        const html = `<pre style="white-space:pre-wrap;font-family:inherit;line-height:1.6;color:var(--text-muted);font-size:13.5px;">${escapeHtml(res.plainLyrics)}</pre>`;
+        $('lyricsSourceBadge').textContent = `Lyrics • ${res.source}`;
+        const html = `<pre style="white-space:pre-wrap;font-family:inherit;line-height:1.6;color:var(--text-secondary);font-size:13.5px;">${escapeHtml(res.plainLyrics)}</pre>`;
         $('lyricsContainer').innerHTML = html;
         $('cinemaLyricsContainer').innerHTML = html;
       } else {
-        $('lyricsContainer').innerHTML = '<div class="empty-state">No lyrics found for this track.</div>';
-        $('cinemaLyricsContainer').innerHTML = '<div class="empty-state">No lyrics found.</div>';
+        $('lyricsContainer').innerHTML = '<div class="empty-state">No lyrics found for this song.</div>';
+        $('cinemaLyricsContainer').innerHTML = '<div class="empty-state">No lyrics available.</div>';
       }
     } catch {
       $('lyricsContainer').innerHTML = '<div class="empty-state">Unable to load lyrics.</div>';
@@ -287,7 +297,7 @@
 
   function renderNowPlaying(track) {
     $('npTitle').textContent = track.title;
-    $('npArtist').textContent = `${track.artist}${track.album ? ` • ${track.album}` : ''}`;
+    $('npArtist').textContent = track.artist;
     $('barTitle').textContent = track.title;
     $('barArtist').textContent = track.artist;
     $('cinemaTitle').textContent = track.title;
@@ -310,15 +320,15 @@
     const badge = $('npCodecBadge');
     badge.classList.remove('lossless', 'video');
     if (track.mediaType === 'video') {
-      badge.textContent = track.source === 'youtube' ? 'VIDEO SONG • HD' : `VIDEO • ${track.codec || 'MP4'}`;
+      badge.textContent = track.source === 'youtube' ? 'VIDEO SONG' : `VIDEO • ${track.codec || 'MP4'}`;
       badge.classList.add('video');
     } else if (track.lossless) {
       const sr = track.sampleRate ? ` • ${Math.round(track.sampleRate / 1000)}kHz` : '';
       const bd = track.bitDepth ? `/${track.bitDepth}bit` : '';
-      badge.textContent = `HI-RES ${track.codec || 'FLAC'}${bd}${sr}`;
+      badge.textContent = `${track.codec || 'FLAC'}${bd}${sr}`;
       badge.classList.add('lossless');
     } else {
-      badge.textContent = track.source === 'youtube' ? 'YOUTUBE MUSIC • OPUS' : (track.codec || 'LOCAL AUDIO');
+      badge.textContent = track.source === 'youtube' ? 'YOUTUBE MUSIC' : (track.codec || 'AUDIO');
     }
 
     $('cinemaBadge').textContent = badge.textContent;
@@ -326,12 +336,14 @@
     const isYt = track.source === 'youtube';
     $('npSwitchVideoBtn').classList.toggle('hidden', !isYt);
     $('barVideoToggleBtn').classList.toggle('hidden', !isYt);
-    $('npSwitchVideoBtn').textContent = state.videoMode ? '🎵 Audio Mode' : '🎬 Watch Video';
+    $('npSwitchVideoBtn').innerHTML = state.videoMode
+      ? `${ICONS.music} Audio Mode`
+      : `${ICONS.video} Watch Video`;
 
     const liked = isLiked(track.id);
     ['npLikeBtn', 'barLikeBtn'].forEach((id) => {
       const btn = $(id);
-      btn.textContent = liked ? '♥' : '♡';
+      btn.innerHTML = liked ? ICONS.heartFilled : ICONS.heart;
       btn.classList.toggle('liked', liked);
     });
   }
@@ -377,16 +389,13 @@
     renderNowPlaying(state.currentTrack);
     if (state.videoMode) {
       switchView('videos');
-      showToast('Switched to Video Song Stage');
     } else {
       syncVideoStageVisibility();
-      showToast('Switched to Audio Mode');
     }
   }
 
   function renderLyricsLines() {
-    const targets = [$('lyricsContainer'), $('cinemaLyricsContainer')];
-    targets.forEach((container) => {
+    [$('lyricsContainer'), $('cinemaLyricsContainer')].forEach((container) => {
       container.innerHTML = '';
       state.lyricsLines.forEach((line, idx) => {
         const div = document.createElement('div');
@@ -420,7 +429,7 @@
       if (currentTime >= seg.start && currentTime < seg.end - 0.35 && state.lastSkippedSegmentStart !== seg.start) {
         state.lastSkippedSegmentStart = seg.start;
         seekCurrent(seg.end);
-        showToast(`Skipped ${seg.category} segment (SponsorBlock)`);
+        showToast(`Skipped ${seg.category}`);
         break;
       }
     }
@@ -459,19 +468,19 @@
     playTrackAtIndex(prevIdx);
   }
 
-  function createTrackRow(track, listContext) {
+  function createTrackRow(track, index, listContext) {
     const row = document.createElement('div');
     const isCurrent = state.currentTrack?.id === track.id;
     row.className = `track-row ${isCurrent ? 'playing' : ''}`;
 
-    const eqOverlay =
+    const idxHtml =
       isCurrent && state.isPlaying
-        ? '<div class="eq-bars-overlay"><span></span><span></span><span></span></div>'
-        : '';
+        ? `<div class="eq-bars-inline"><span></span><span></span><span></span></div><span class="row-play-icon">${ICONS.pause}</span>`
+        : `<span class="row-num">${index + 1}</span><span class="row-play-icon">${ICONS.play}</span>`;
 
     const thumbHtml = track.artwork
-      ? `<div class="track-thumb-wrap"><img class="track-thumb" src="${escapeHtml(track.artwork)}" alt="" loading="lazy" />${eqOverlay}</div>`
-      : `<div class="track-thumb-wrap"><div class="track-thumb">${track.mediaType === 'video' ? '🎬' : '♪'}</div>${eqOverlay}</div>`;
+      ? `<img class="track-thumb" src="${escapeHtml(track.artwork)}" alt="" loading="lazy" />`
+      : `<div class="track-thumb">${track.mediaType === 'video' ? ICONS.video : ICONS.music}</div>`;
 
     const liked = isLiked(track.id);
     const badgeClass =
@@ -490,28 +499,39 @@
         : track.codec || 'AUDIO';
 
     row.innerHTML = `
-      ${thumbHtml}
-      <div class="track-meta">
-        <div class="track-name">${escapeHtml(track.title)}</div>
-        <div class="track-sub">${escapeHtml(track.artist)} • ${formatTime(track.duration)}</div>
+      <div class="track-idx">${idxHtml}</div>
+      <div class="track-main">
+        ${thumbHtml}
+        <div class="track-meta">
+          <div class="track-name">${escapeHtml(track.title)}</div>
+          <div class="track-sub">${escapeHtml(track.artist)}</div>
+        </div>
       </div>
-      <span class="${badgeClass}">${escapeHtml(badgeText)}</span>
-      <div class="track-actions">
-        <button class="icon-btn row-queue" title="Add to Queue">+</button>
-        <button class="icon-btn row-playlist" title="Add to Playlist">☰</button>
-        <button class="icon-btn row-like ${liked ? 'liked' : ''}" title="Like">${liked ? '♥' : '♡'}</button>
+      <div class="track-album">${escapeHtml(track.album || 'Single')}</div>
+      <div><span class="${badgeClass}">${escapeHtml(badgeText)}</span></div>
+      <div class="track-right-cell">
+        <div class="track-actions">
+          <button class="icon-btn row-queue" title="Add to queue">${ICONS.plus}</button>
+          <button class="icon-btn row-playlist" title="Add to playlist">${ICONS.listPlus}</button>
+          <button class="icon-btn row-like ${liked ? 'liked' : ''}" title="Save to Liked Songs">${liked ? ICONS.heartFilled : ICONS.heart}</button>
+        </div>
+        <span class="track-dur">${formatTime(track.duration)}</span>
       </div>
     `;
 
     row.addEventListener('click', (e) => {
       if (e.target.closest('button')) return;
-      playTrackWithContext(track, listContext);
+      if (isCurrent) {
+        toggleCurrentPlay();
+      } else {
+        playTrackWithContext(track, listContext);
+      }
     });
 
     row.querySelector('.row-queue').addEventListener('click', () => {
       state.queue.push(track);
       renderQueue();
-      showToast(`Added "${track.title}" to queue`);
+      showToast('Added to queue');
     });
 
     row.querySelector('.row-playlist').addEventListener('click', () => openPlaylistModal(track));
@@ -535,17 +555,25 @@
       container.innerHTML = `<div class="empty-state">${emptyMsg}</div>`;
       return;
     }
-    tracks.forEach((t) => container.appendChild(createTrackRow(t, tracks)));
+    tracks.forEach((t, idx) => container.appendChild(createTrackRow(t, idx, tracks)));
   }
 
   function renderQuickPicks() {
     const grid = $('quickPicksGrid');
     if (!grid) return;
-    const pool = [
-      ...(state.store?.history || []),
-      ...(state.store?.likedTracks || []),
-      ...(state.discoverySections[0]?.tracks || [])
-    ];
+    let pool = [];
+    if (state.homeFilter === 'videos') {
+      pool = [...state.localTracks.filter((t) => t.mediaType === 'video'), ...state.videoResults];
+    } else if (state.homeFilter === 'local') {
+      pool = state.localTracks;
+    } else {
+      pool = [
+        ...(state.store?.history || []),
+        ...(state.store?.likedTracks || []),
+        ...(state.discoverySections[0]?.tracks || [])
+      ];
+    }
+
     const unique = [];
     const seen = new Set();
     for (const t of pool) {
@@ -563,7 +591,7 @@
       card.innerHTML = `
         <img src="${escapeHtml(track.artwork || '')}" alt="" loading="lazy" />
         <span>${escapeHtml(track.title)}</span>
-        <div class="qp-play">▶</div>
+        <div class="qp-play">${ICONS.play}</div>
       `;
       card.addEventListener('click', () => playTrackWithContext(track, unique));
       grid.appendChild(card);
@@ -574,15 +602,23 @@
     renderQuickPicks();
     const container = $('discoveryShelves');
     container.innerHTML = '';
-    if (!state.discoverySections.length) {
-      container.innerHTML = '<div class="empty-state">Connect to the internet to load mixes, or add local folders from Your Library.</div>';
+
+    let sections = state.discoverySections;
+    if (state.homeFilter === 'videos') {
+      sections = state.videoResults.length ? [{ title: 'Popular Video Songs', tracks: state.videoResults }] : [];
+    } else if (state.homeFilter === 'local') {
+      sections = state.localTracks.length ? [{ title: 'Your Local Library', tracks: state.localTracks.slice(0, 12) }] : [];
+    }
+
+    if (!sections.length) {
+      container.innerHTML = '<div class="empty-state">No tracks available in this view yet.</div>';
       return;
     }
 
-    for (const sec of state.discoverySections) {
+    for (const sec of sections) {
       const shelf = document.createElement('div');
       shelf.className = 'shelf';
-      shelf.innerHTML = `<div class="shelf-title">${escapeHtml(sec.title)}</div><div class="cards-grid"></div>`;
+      shelf.innerHTML = `<div class="shelf-head"><div class="shelf-title">${escapeHtml(sec.title)}</div></div><div class="cards-grid"></div>`;
       const grid = shelf.querySelector('.cards-grid');
 
       sec.tracks.forEach((track) => {
@@ -591,7 +627,7 @@
         card.innerHTML = `
           <div class="card-art-wrap">
             <img src="${escapeHtml(track.artwork || '')}" alt="" loading="lazy" />
-            <div class="card-play-fab">▶</div>
+            <div class="card-play-fab">${ICONS.play}</div>
           </div>
           <div class="card-title">${escapeHtml(track.title)}</div>
           <div class="card-sub">${escapeHtml(track.artist)}</div>
@@ -605,17 +641,18 @@
   }
 
   function renderSidebarLibrary() {
-    $('sidebarLikedCount').textContent = `${state.store?.likedTracks?.length || 0} tracks`;
+    const count = state.store?.likedTracks?.length || 0;
+    $('sidebarLikedCount').textContent = `${count} ${count === 1 ? 'song' : 'songs'}`;
     const container = $('sidebarCustomPlaylists');
     container.innerHTML = '';
     (state.store?.playlists || []).forEach((pl) => {
       const div = document.createElement('div');
       div.className = 'sidebar-pl-item';
       div.innerHTML = `
-        <div class="pl-thumb">♫</div>
+        <div class="pl-thumb">${ICONS.music}</div>
         <div class="pl-text">
           <strong>${escapeHtml(pl.name)}</strong>
-          <span class="muted">${pl.tracks.length} tracks</span>
+          <span class="muted">Playlist • ${pl.tracks.length} songs</span>
         </div>
       `;
       div.addEventListener('click', () => {
@@ -632,7 +669,7 @@
     (state.store?.localFolders || []).forEach((folder) => {
       const chip = document.createElement('div');
       chip.className = 'folder-chip';
-      chip.innerHTML = `<span>📁 ${escapeHtml(folder)}</span><button title="Remove folder">✕</button>`;
+      chip.innerHTML = `${ICONS.folder} <span>${escapeHtml(folder)}</span><button title="Remove folder">${ICONS.close}</button>`;
       chip.querySelector('button').addEventListener('click', async () => {
         const res = await window.yumaAPI.library.removeFolder(folder);
         state.store.localFolders = res.folders;
@@ -650,32 +687,31 @@
     renderTrackList(
       'localTracksList',
       audioTracks,
-      'No local audio files found. Click <strong>+ Add Music/Video Folder</strong> or drag &amp; drop files!'
+      'No local audio files found. Click <strong>Add Folder</strong> or drag &amp; drop files onto the player.'
     );
     renderTrackList(
       'localVideosList',
       videoTracks,
-      'No local video songs (.mp4, .mkv, .webm) found in your added folders.'
+      'No local video files (.mp4, .mkv, .webm) found in your added folders.'
     );
     renderVideoSongsList();
   }
 
   function renderVideoSongsList() {
     const localVideos = state.localTracks.filter((t) => t.mediaType === 'video');
-    const combined = [...localVideos, ...state.videoResults];
     renderTrackList(
       'videoSongsList',
-      combined,
-      'Click <strong>Search Music Videos</strong> or open local .mp4/.webm video songs to watch here.'
+      [...localVideos, ...state.videoResults],
+      'Click Find Music Videos or open local .mp4/.webm video songs.'
     );
   }
 
   function renderLiked() {
-    renderTrackList('likedTracksList', state.store?.likedTracks || [], 'No liked songs yet. Click ♡ on any track.');
+    renderTrackList('likedTracksList', state.store?.likedTracks || [], 'Songs you like will appear here.');
   }
 
   function renderHistory() {
-    renderTrackList('historyTracksList', state.store?.history || [], 'Your recently played tracks will appear here.');
+    renderTrackList('historyTracksList', state.store?.history || [], 'No playback history yet.');
   }
 
   function renderPlaylists() {
@@ -684,7 +720,7 @@
     container.innerHTML = '';
     const playlists = state.store?.playlists || [];
     if (playlists.length === 0) {
-      container.innerHTML = '<div class="empty-state">Create a playlist above to organize songs and video songs together.</div>';
+      container.innerHTML = '<div class="empty-state">Create a playlist above to organize your songs and video songs.</div>';
       return;
     }
 
@@ -695,11 +731,11 @@
         <div class="playlist-card-head">
           <div>
             <strong>${escapeHtml(pl.name)}</strong>
-            <span class="muted"> (${pl.tracks.length} tracks)</span>
+            <span class="muted"> • ${pl.tracks.length} songs</span>
           </div>
-          <div>
-            <button class="glass-btn pl-play-btn">▶ Play</button>
-            <button class="icon-btn pl-del-btn" title="Delete Playlist">🗑</button>
+          <div class="hero-actions">
+            <button class="spotify-btn pl-play-btn">${ICONS.play} Play</button>
+            <button class="icon-btn pl-del-btn" title="Delete Playlist">${ICONS.trash}</button>
           </div>
         </div>
         <div class="track-list pl-tracks"></div>
@@ -714,7 +750,7 @@
       });
 
       const listEl = card.querySelector('.pl-tracks');
-      pl.tracks.forEach((t) => listEl.appendChild(createTrackRow(t, pl.tracks)));
+      pl.tracks.forEach((t, idx) => listEl.appendChild(createTrackRow(t, idx, pl.tracks)));
       container.appendChild(card);
     });
   }
@@ -724,20 +760,21 @@
     const list = $('queueList');
     list.innerHTML = '';
     if (state.queue.length === 0) {
-      list.innerHTML = '<div class="empty-state">Queue is empty.</div>';
+      list.innerHTML = '<div class="empty-state">Your queue is empty.</div>';
       return;
     }
     state.queue.forEach((t, idx) => {
+      const isCur = idx === state.queueIndex;
       const row = document.createElement('div');
-      row.className = `track-row ${idx === state.queueIndex ? 'playing' : ''}`;
+      row.className = `queue-row ${isCur ? 'playing' : ''}`;
       row.innerHTML = `
-        <div class="track-thumb">${idx === state.queueIndex ? '▶' : idx + 1}</div>
+        <span class="muted" style="text-align:center">${isCur && state.isPlaying ? ICONS.play : idx + 1}</span>
         <div class="track-meta">
           <div class="track-name">${escapeHtml(t.title)}</div>
           <div class="track-sub">${escapeHtml(t.artist)}</div>
         </div>
-        <span class="codec-badge">${formatTime(t.duration)}</span>
-        <button class="icon-btn" title="Remove">✕</button>
+        <span class="track-dur">${formatTime(t.duration)}</span>
+        <button class="icon-btn" title="Remove">${ICONS.close}</button>
       `;
       row.addEventListener('click', (e) => {
         if (e.target.closest('button')) return;
@@ -768,20 +805,20 @@
     list.innerHTML = '';
     const playlists = state.store?.playlists || [];
     if (playlists.length === 0) {
-      list.innerHTML = '<div class="muted">No playlists yet. Create one in Library → Playlists.</div>';
+      list.innerHTML = '<div class="muted">No playlists yet. Create one in Your Library → Playlists.</div>';
     } else {
       playlists.forEach((pl) => {
         const btn = document.createElement('button');
         btn.className = 'glass-btn';
-        btn.style.textAlign = 'left';
-        btn.textContent = `${pl.name} (${pl.tracks.length})`;
+        btn.style.justifyContent = 'space-between';
+        btn.innerHTML = `<span>${escapeHtml(pl.name)}</span><span class="muted">${pl.tracks.length}</span>`;
         btn.addEventListener('click', async () => {
           const updated = await window.yumaAPI.store.addToPlaylist(pl.id, state.pendingPlaylistTrack);
           const idx = state.store.playlists.findIndex((p) => p.id === pl.id);
           if (idx >= 0) state.store.playlists[idx] = updated;
           $('playlistModal').classList.add('hidden');
           renderPlaylists();
-          showToast(`Added to "${pl.name}"`);
+          showToast(`Added to ${pl.name}`);
         });
         list.appendChild(btn);
       });
@@ -820,28 +857,26 @@
   function drawVisualizers() {
     const data = engine?.getSpectrum();
     const canvases = [
-      { el: $('heroVisualizer'), color: '#1ed760' },
-      { el: $('sideVisualizer'), color: '#22d3ee' },
+      { el: $('sideVisualizer'), color: '#1db954' },
       { el: $('cinemaVisualizer'), color: '#1ed760' }
     ];
 
-    // Audio-reactive halo intensity
-    let energy = 0.08;
+    let energy = 0.05;
     if (state.activeBackend === 'local' && data && state.isPlaying) {
       let sum = 0;
       for (let i = 0; i < 8; i++) sum += data[i];
       energy = sum / (8 * 255);
     } else if (state.isPlaying) {
-      energy = 0.32 + 0.25 * Math.abs(Math.sin(performance.now() / 320));
+      energy = 0.28 + 0.18 * Math.abs(Math.sin(performance.now() / 340));
     }
 
     const halo = $('npHalo');
     if (halo) {
-      halo.style.transform = `scale(${(1 + energy * 0.22).toFixed(3)})`;
-      halo.style.opacity = state.isPlaying ? String((0.45 + energy * 0.45).toFixed(2)) : '0.2';
+      halo.style.transform = `scale(${(1 + energy * 0.14).toFixed(3)})`;
+      halo.style.opacity = state.isPlaying ? String((0.3 + energy * 0.4).toFixed(2)) : '0.15';
     }
 
-    const now = performance.now() / 210;
+    const now = performance.now() / 220;
     for (const { el, color } of canvases) {
       if (!el) continue;
       const ctx = el.getContext('2d');
@@ -849,27 +884,24 @@
       const h = el.height;
       ctx.clearRect(0, 0, w, h);
 
-      const bars = 32;
+      const bars = 28;
       const barWidth = w / bars - 3;
       for (let i = 0; i < bars; i++) {
-        let val = 0.07;
+        let val = 0.06;
         if (state.activeBackend === 'local' && data && state.isPlaying) {
           val = data[i] / 255;
         } else if (state.isPlaying) {
-          val = 0.22 + 0.52 * Math.abs(Math.sin(now + i * 0.42) * Math.cos(now * 0.55 + i * 0.19));
+          val = 0.2 + 0.46 * Math.abs(Math.sin(now + i * 0.45) * Math.cos(now * 0.52 + i * 0.2));
         }
-        const barH = Math.max(4, val * (h - 8));
-        const grad = ctx.createLinearGradient(0, h - barH, 0, h);
-        grad.addColorStop(0, color);
-        grad.addColorStop(1, 'rgba(168, 85, 247, 0.35)');
-        ctx.fillStyle = grad;
+        const barH = Math.max(3, val * (h - 6));
+        ctx.fillStyle = state.isPlaying ? color : 'rgba(255,255,255,0.16)';
         ctx.beginPath();
-        ctx.roundRect(i * (barWidth + 3), h - barH, barWidth, barH, 3);
+        ctx.roundRect(i * (barWidth + 3), h - barH, barWidth, barH, 2);
         ctx.fill();
       }
     }
 
-    visualizerRaf = requestAnimationFrame(drawVisualizers);
+    requestAnimationFrame(drawVisualizers);
   }
 
   async function runHybridSearch(query, mode = state.searchMode) {
@@ -892,7 +924,7 @@
       $('localSearchBlock').classList.add('hidden');
     }
 
-    $('ytSearchList').innerHTML = '<div class="empty-state">Searching online...</div>';
+    $('ytSearchList').innerHTML = '<div class="empty-state">Searching...</div>';
     try {
       const results = await window.yumaAPI.music.search(q, mode);
       state.ytSearchResults = results;
@@ -901,26 +933,26 @@
         renderVideoSongsList();
       }
       renderTrackList('ytSearchList', results, 'No matching songs or videos found.');
-      $('searchMeta').textContent = `Found ${localMatches.length} local + ${results.length} online results`;
+      $('searchMeta').textContent = `${localMatches.length} local • ${results.length} online results`;
     } catch {
-      $('ytSearchList').innerHTML = '<div class="empty-state">Online search failed (check internet connection).</div>';
+      $('ytSearchList').innerHTML = '<div class="empty-state">Online search unavailable (check connection).</div>';
     }
   }
 
   async function loadDiscovery() {
-    $('discoveryShelves').innerHTML = '<div class="empty-state">Loading discovery mixes...</div>';
+    $('discoveryShelves').innerHTML = '<div class="empty-state">Loading mixes...</div>';
     try {
       state.discoverySections = await window.yumaAPI.music.getHome();
     } catch {
       state.discoverySections = [];
     }
     renderDiscovery();
-    // Seed recommended video songs shelf silently
     window.yumaAPI.music
-      .search('latest hit music video 2026', 'videos')
+      .search('official music video', 'videos')
       .then((vids) => {
         state.videoResults = vids || [];
         renderVideoSongsList();
+        if (state.homeFilter === 'videos') renderDiscovery();
       })
       .catch(() => {});
   }
@@ -932,7 +964,7 @@
 
     if (!minutes || minutes <= 0) {
       state.sleepEndTime = 0;
-      btn.textContent = '🌙';
+      btn.innerHTML = ICONS.moon;
       btn.classList.remove('active');
       showToast('Sleep timer turned off');
       return;
@@ -942,7 +974,7 @@
     btn.classList.add('active');
     const updateLabel = () => {
       const remMin = Math.max(1, Math.ceil((state.sleepEndTime - Date.now()) / 60000));
-      btn.textContent = `🌙 ${remMin}m`;
+      btn.innerHTML = `${ICONS.moon} <span>${remMin}m</span>`;
     };
     updateLabel();
     state.sleepTickId = setInterval(updateLabel, 15000);
@@ -951,7 +983,7 @@
       setSleepTimer(0);
       showToast('Sleep timer paused playback');
     }, minutes * 60 * 1000);
-    showToast(`Sleep timer set for ${minutes} minutes`);
+    showToast(`Sleep timer set for ${minutes} min`);
   }
 
   function renderUpdaterStatus(status) {
@@ -972,7 +1004,7 @@
     if (isAvail || isDl || isReady) {
       pill.classList.remove('hidden');
       $('updatePillText').textContent = isReady
-        ? 'Restart & Update'
+        ? 'Restart to Update'
         : isDl
         ? `Updating ${status.progress || 0}%`
         : `Update v${status.availableVersion}`;
@@ -982,7 +1014,7 @@
 
     if (status.pcRelease?.notes) {
       $('releaseNotesBox').classList.remove('hidden');
-      $('releaseNotesBox').textContent = `Release Notes (${status.pcRelease.tag}):\n${status.pcRelease.notes}`;
+      $('releaseNotesBox').textContent = `Release ${status.pcRelease.tag}:\n${status.pcRelease.notes}`;
     }
 
     if (status.upstream) {
@@ -992,12 +1024,10 @@
   }
 
   function wireEvents() {
-    // Window controls
     $('minBtn').addEventListener('click', () => window.yumaAPI.windowControls.minimize());
     $('maxBtn').addEventListener('click', () => window.yumaAPI.windowControls.maximize());
     $('closeBtn').addEventListener('click', () => window.yumaAPI.windowControls.close());
 
-    // Back / Forward navigation
     $('navBackBtn').addEventListener('click', () => {
       if (state.viewHistoryIndex > 0) {
         state.viewHistoryIndex--;
@@ -1011,7 +1041,6 @@
       }
     });
 
-    // Left Sidebar Navigation
     document.querySelectorAll('.side-nav-item').forEach((btn) => {
       btn.addEventListener('click', () => switchView(btn.dataset.view));
     });
@@ -1025,12 +1054,19 @@
       $('newPlaylistInput').focus();
     });
 
-    // Side Tabs
+    document.querySelectorAll('.filter-chip').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-chip').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.homeFilter = btn.dataset.homeFilter;
+        renderDiscovery();
+      });
+    });
+
     document.querySelectorAll('.side-tab').forEach((btn) => {
       btn.addEventListener('click', () => switchSideTab(btn.dataset.sideTab));
     });
 
-    // Search Mode Tabs
     document.querySelectorAll('.tab-btn[data-search-mode]').forEach((btn) => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.tab-btn[data-search-mode]').forEach((b) => b.classList.remove('active'));
@@ -1042,7 +1078,6 @@
       });
     });
 
-    // Library Sub-tabs
     document.querySelectorAll('.tab-btn[data-lib-tab]').forEach((btn) => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.tab-btn[data-lib-tab]').forEach((b) => b.classList.remove('active'));
@@ -1052,7 +1087,6 @@
       });
     });
 
-    // Search Input
     const searchInput = $('globalSearchInput');
     searchInput.addEventListener('input', (e) => {
       $('clearSearchBtn').classList.toggle('hidden', !e.target.value);
@@ -1084,7 +1118,6 @@
       syncVideoStageVisibility();
     });
 
-    // Local folder & file pickers
     const handleAddFolder = async () => {
       const res = await window.yumaAPI.library.pickFolder();
       if (!res.canceled) {
@@ -1093,7 +1126,7 @@
         renderFolders();
         renderLocalTracks();
         switchView('library');
-        showToast(`Scanned ${res.tracks.length} local media files`);
+        showToast(`Added ${res.tracks.length} local files`);
       }
     };
     $('addFolderBtn').addEventListener('click', handleAddFolder);
@@ -1103,7 +1136,7 @@
       const res = await window.yumaAPI.library.scan();
       state.localTracks = res.tracks;
       renderLocalTracks();
-      showToast(`Rescanned ${res.tracks.length} local files`);
+      showToast(`Scanned ${res.tracks.length} local files`);
     });
 
     $('openFilesQuickBtn').addEventListener('click', async () => {
@@ -1115,7 +1148,6 @@
 
     $('heroRefreshFeedBtn').addEventListener('click', loadDiscovery);
 
-    // Drag & Drop Audio or Video Files
     document.body.addEventListener('dragover', (e) => e.preventDefault());
     document.body.addEventListener('drop', async (e) => {
       e.preventDefault();
@@ -1125,12 +1157,10 @@
         const tracks = await window.yumaAPI.library.parsePaths(paths);
         if (tracks.length > 0) {
           playTrackWithContext(tracks[0], tracks);
-          showToast(`Loaded ${tracks.length} dropped file(s)`);
         }
       }
     });
 
-    // Local Video Player Events
     const localVid = $('localVideoPlayer');
     localVid.addEventListener('timeupdate', () => {
       if (state.activeBackend !== 'localVideo') return;
@@ -1146,7 +1176,6 @@
       if (state.activeBackend === 'localVideo') nextTrack();
     });
 
-    // Transport Controls
     $('playPauseBtn').addEventListener('click', toggleCurrentPlay);
     $('nextBtn').addEventListener('click', () => nextTrack());
     $('prevBtn').addEventListener('click', prevTrack);
@@ -1154,15 +1183,14 @@
     $('shuffleBtn').addEventListener('click', (e) => {
       state.shuffle = !state.shuffle;
       e.currentTarget.classList.toggle('active', state.shuffle);
-      showToast(state.shuffle ? 'Shuffle On' : 'Shuffle Off');
     });
 
     $('repeatBtn').addEventListener('click', (e) => {
       const order = ['off', 'all', 'one'];
       state.repeatMode = order[(order.indexOf(state.repeatMode) + 1) % order.length];
-      e.currentTarget.textContent = state.repeatMode === 'one' ? '↻¹' : '↻';
       e.currentTarget.classList.toggle('active', state.repeatMode !== 'off');
-      showToast(`Repeat: ${state.repeatMode.toUpperCase()}`);
+      e.currentTarget.title = `Repeat: ${state.repeatMode}`;
+      showToast(`Repeat: ${state.repeatMode}`);
     });
 
     $('seekSlider').addEventListener('input', (e) => seekCurrent(parseFloat(e.target.value)));
@@ -1182,7 +1210,7 @@
       engine.setPlaybackRate(state.playbackRate);
       window.yumaAPI.ytmPlayer.setPlaybackRate(state.playbackRate);
       localVid.playbackRate = state.playbackRate;
-      showToast(`Playback speed: ${state.playbackRate}x`);
+      showToast(`Speed: ${state.playbackRate}x`);
     });
 
     $('sleepTimerBtn').addEventListener('click', () => $('sleepModal').classList.remove('hidden'));
@@ -1226,7 +1254,6 @@
       renderQueue();
     });
 
-    // Playlists
     $('createPlaylistBtn').addEventListener('click', async () => {
       const input = $('newPlaylistInput');
       if (!input.value.trim()) return;
@@ -1237,7 +1264,6 @@
     });
     $('closePlaylistModal').addEventListener('click', () => $('playlistModal').classList.add('hidden'));
 
-    // DSP & Settings
     $('crossfadeSlider').addEventListener('input', async (e) => {
       const sec = parseInt(e.target.value, 10);
       $('crossfadeValue').textContent = `${sec}s`;
@@ -1257,7 +1283,7 @@
 
     $('ambientToggle').addEventListener('change', async (e) => {
       state.store.settings.ambientBackdrop = e.target.checked;
-      $('ambientBackdrop').style.opacity = e.target.checked ? '1' : '0';
+      updateAmbientFromArtwork(e.target.checked ? state.currentTrack?.artwork : null);
       await window.yumaAPI.store.updateSettings({ ambientBackdrop: e.target.checked });
     });
 
@@ -1272,7 +1298,6 @@
       await window.yumaAPI.store.updateSettings({ eqPreset: preset, eqBands: bands });
     });
 
-    // Keyboard shortcuts & Global Media Keys
     window.addEventListener('keydown', (e) => {
       const tag = document.activeElement?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
@@ -1294,7 +1319,6 @@
       if (cmd === 'prev') prevTrack();
     });
 
-    // In-App Updater (No browser redirects!)
     $('updateBadgeBtn').addEventListener('click', () => switchView('updates'));
     $('checkUpdatesBtn').addEventListener('click', async () => {
       $('updateStatusText').textContent = 'Checking GitHub Releases...';
@@ -1308,16 +1332,17 @@
     });
     window.yumaAPI.updater.onStatus(renderUpdaterStatus);
 
-    // Keep WebContentsView video stage aligned on window resize
     const ro = new ResizeObserver(() => syncVideoStageVisibility());
     ro.observe($('videoStageHost'));
     window.addEventListener('resize', syncVideoStageVisibility);
   }
 
   async function bootstrap() {
+    hydrateIcons();
     updateGreeting();
     const cfg = await window.yumaAPI.getConfig();
     state.streamPort = cfg.streamPort;
+    $('sidebarVersion').textContent = `v${cfg.version}`;
     state.store = await window.yumaAPI.store.getState();
 
     const s = state.store.settings;
@@ -1371,7 +1396,6 @@
     $('bassSwapToggle').checked = s.bassSwap;
     $('sponsorBlockToggle').checked = s.sponsorBlockEnabled;
     $('ambientToggle').checked = s.ambientBackdrop;
-    $('ambientBackdrop').style.opacity = s.ambientBackdrop ? '1' : '0';
     $('eqPresetSelect').value = s.eqPreset || 'Flat';
     buildEqUI();
 
