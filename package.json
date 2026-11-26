@@ -1,6 +1,6 @@
 {
   "name": "yumaplayer-pc",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "YumaPlayer PC - Hybrid YouTube Music, Lossless Local Audio & Glassmorphism Desktop Player",
   "main": "src/main/main.js",
   "scripts": {
