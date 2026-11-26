@@ -58,6 +58,7 @@
     background: linear-gradient(180deg, rgba(165, 12, 24, 0.28) 0%, #09090b 24%, #000000 100%) !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch;
   }
 
   .view {
@@ -523,6 +524,7 @@
     border-radius: 8px !important;
     background: transparent !important;
     align-items: center !important;
+    contain: layout style;
   }
 
   .track-row.playing {
@@ -670,14 +672,13 @@
     box-sizing: border-box !important;
     height: calc(58px + env(safe-area-inset-bottom, 0px)) !important;
     padding: 4px 4px env(safe-area-inset-bottom, 0px) !important;
-    background: linear-gradient(180deg, rgba(10, 10, 12, 0.94) 0%, #000000 38%) !important;
+    background: linear-gradient(180deg, rgba(10, 10, 12, 0.96) 0%, #000000 42%) !important;
     border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
     border-radius: 0 !important;
     display: flex !important;
     flex-direction: row !important;
     justify-content: space-around !important;
     align-items: center !important;
-    backdrop-filter: blur(18px);
   }
 
   .sidebar-divider,

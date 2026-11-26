@@ -109,6 +109,17 @@ class YtmPlayer {
     this._applyBounds();
   }
 
+  async prewarm() {
+    try {
+      const view = this._ensureView();
+      if (view && !view.webContents.getURL()) {
+        await view.webContents.loadURL('https://music.youtube.com').catch(() => {});
+      }
+    } catch {
+      // ignore prewarm errors
+    }
+  }
+
   async play(videoId, { preferVideo = false } = {}) {
     if (!videoId) throw new Error('Missing videoId');
     this.currentVideoId = videoId;
@@ -122,19 +133,47 @@ class YtmPlayer {
     }
     this.stopPolling();
 
-    const base = preferVideo
-      ? `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`
-      : `https://music.youtube.com/watch?v=${encodeURIComponent(videoId)}`;
+    const targetHost = preferVideo ? 'www.youtube.com' : 'music.youtube.com';
+    const currentUrl = view.webContents.getURL() || '';
+    let switchedInPage = false;
 
-    try {
-      await view.webContents.loadURL(base);
-    } finally {
+    // Instant zero-reload SPA track switch when already on matching YouTube host
+    if (currentUrl.includes(targetHost)) {
+      try {
+        const res = await view.webContents.executeJavaScript(`(() => {
+          const p = document.querySelector('#movie_player');
+          if (!p || typeof p.loadVideoById !== 'function') return false;
+          try {
+            history.replaceState(null, '', '/watch?v=' + ${JSON.stringify(videoId)});
+          } catch {}
+          p.loadVideoById(${JSON.stringify(videoId)});
+          const v = document.querySelector('video');
+          if (v && v.paused) v.play().catch(() => {});
+          return true;
+        })()`);
+        switchedInPage = Boolean(res);
+      } catch {
+        switchedInPage = false;
+      }
+    }
+
+    if (!switchedInPage) {
+      const base = preferVideo
+        ? `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`
+        : `https://music.youtube.com/watch?v=${encodeURIComponent(videoId)}`;
+
+      try {
+        await view.webContents.loadURL(base);
+      } finally {
+        this.isLoadingTrack = false;
+      }
+    } else {
       this.isLoadingTrack = false;
     }
 
     if (this.currentVideoId !== videoId) return;
-    await this.setVolume(this.volume);
-    await this.setPlaybackRate(this.playbackRate);
+    this.setVolume(this.volume);
+    this.setPlaybackRate(this.playbackRate);
     this._startPolling(videoId);
   }
 

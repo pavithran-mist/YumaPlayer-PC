@@ -108,6 +108,9 @@ function createWindow() {
   });
 
   mainWindow.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
+  mainWindow.webContents.once('did-finish-load', () => {
+    setTimeout(() => ytmPlayer?.prewarm(), 900);
+  });
 
   mainWindow.on('maximize', () => {
     mainWindow?.webContents.send('window:maximized-changed', true);

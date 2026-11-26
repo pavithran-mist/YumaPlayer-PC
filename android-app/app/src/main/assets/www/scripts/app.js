@@ -70,7 +70,7 @@
       setTimeout(() => splash.classList.add('hidden'), 460);
     };
     splash.addEventListener('click', hide, { once: true });
-    setTimeout(hide, 1250);
+    setTimeout(hide, 550);
   }
 
   function getHdArtwork(track) {
@@ -218,6 +218,7 @@
   function openCinema() {
     $('cinemaOverlay').classList.remove('hidden');
     window.yumaAPI.windowControls.setFullscreen(true);
+    kickVisualizerLoop();
     setTimeout(syncVideoStageVisibility, 80);
   }
 
@@ -263,6 +264,32 @@
     img.src = src;
   }
 
+  function syncActiveTrackHighlights() {
+    const curId = state.currentTrack?.id || null;
+    document.querySelectorAll('.track-row').forEach((row) => {
+      const match = Boolean(curId && row.dataset.trackId === curId);
+      if (row.classList.contains('playing') === match && (!match || row.dataset.playingState === String(state.isPlaying))) {
+        return;
+      }
+      row.classList.toggle('playing', match);
+      row.dataset.playingState = String(state.isPlaying);
+      const idxCell = row.querySelector('.track-idx');
+      if (idxCell) {
+        const num = row.dataset.trackNum || '';
+        idxCell.innerHTML =
+          match && state.isPlaying
+            ? `<div class="eq-bars-inline"><span></span><span></span><span></span></div><span class="row-play-icon">${ICONS.pause}</span>`
+            : `<span class="row-num">${num}</span><span class="row-play-icon">${ICONS.play}</span>`;
+      }
+    });
+    document.querySelectorAll('.queue-row').forEach((row, idx) => {
+      const isCur = idx === state.queueIndex;
+      row.classList.toggle('playing', isCur);
+      const span = row.querySelector('span');
+      if (span) span.innerHTML = isCur && state.isPlaying ? ICONS.play : String(idx + 1);
+    });
+  }
+
   function setPlayingUiState(playing) {
     state.isPlaying = playing;
     const icon = playing ? ICONS.pause : ICONS.play;
@@ -275,8 +302,8 @@
         Boolean(playing)
       );
     }
-    renderAllLists();
-    renderQueue();
+    syncActiveTrackHighlights();
+    if (playing) kickVisualizerLoop();
   }
 
   async function playTrackAtIndex(index, { useCrossfade = false, forceVideo = null } = {}) {
@@ -292,9 +319,11 @@
 
     renderNowPlaying(track);
     renderQueue();
+    syncActiveTrackHighlights();
     updateAmbientFromArtwork(getHdArtwork(track));
 
     const localVid = $('localVideoPlayer');
+    const targetVol = state.store?.settings?.volume ?? 0.85;
     try {
       if (track.source === 'youtube') {
         engine.stop();
@@ -304,22 +333,22 @@
         setPlayingUiState(true);
         if (wantVideo) switchView('videos');
         syncVideoStageVisibility();
-        await window.yumaAPI.ytmPlayer.setVolume(state.store?.settings?.volume ?? 0.85);
-        await window.yumaAPI.ytmPlayer.setPlaybackRate(state.playbackRate);
+        window.yumaAPI.ytmPlayer.setVolume(targetVol);
+        window.yumaAPI.ytmPlayer.setPlaybackRate(state.playbackRate);
         await window.yumaAPI.ytmPlayer.play(track.videoId, wantVideo);
       } else if (track.mediaType === 'video') {
-        await window.yumaAPI.ytmPlayer.stop();
+        window.yumaAPI.ytmPlayer.stop();
         engine.stop();
         state.activeBackend = 'localVideo';
         switchView('videos');
         syncVideoStageVisibility();
         localVid.src = getTrackStreamUrl(track);
-        localVid.volume = state.store?.settings?.volume ?? 0.85;
+        localVid.volume = targetVol;
         localVid.playbackRate = state.playbackRate;
         await localVid.play();
         setPlayingUiState(true);
       } else {
-        await window.yumaAPI.ytmPlayer.stop();
+        window.yumaAPI.ytmPlayer.stop();
         localVid.pause();
         localVid.removeAttribute('src');
         state.activeBackend = 'local';
@@ -328,9 +357,13 @@
         setPlayingUiState(true);
       }
 
-      state.store.history = await window.yumaAPI.store.addHistory(track);
-      renderHistory();
-      renderQuickPicks();
+      window.yumaAPI.store.addHistory(track).then((hist) => {
+        state.store.history = hist;
+        setTimeout(() => {
+          if (state.currentView === 'library') renderHistory();
+          if (state.currentView === 'discover') renderQuickPicks();
+        }, 60);
+      });
     } catch (err) {
       showToast(`Playback failed: ${err.message || 'Check connection or file'}`);
     }
@@ -724,6 +757,8 @@
     const row = document.createElement('div');
     const isCurrent = state.currentTrack?.id === track.id;
     row.className = `track-row ${isCurrent ? 'playing' : ''}`;
+    row.dataset.trackId = track.id || '';
+    row.dataset.trackNum = String(index + 1);
 
     const idxHtml =
       isCurrent && state.isPlaying
@@ -1384,54 +1419,67 @@
     });
   }
 
+  let vizRafId = 0;
+  function kickVisualizerLoop() {
+    if (!vizRafId) {
+      vizRafId = requestAnimationFrame(drawVisualizers);
+    }
+  }
+
   function drawVisualizers() {
+    vizRafId = 0;
     const data = engine?.getSpectrum();
     const canvases = [
       { el: $('sideVisualizer'), color: '#ff2a3c' },
       { el: $('cinemaVisualizer'), color: '#ff2a3c' }
     ];
+    const anyVisible = canvases.some((c) => c.el && c.el.offsetParent !== null);
 
-    let energy = 0.05;
-    if (state.activeBackend === 'local' && data && state.isPlaying) {
-      let sum = 0;
-      for (let i = 0; i < 8; i++) sum += data[i];
-      energy = sum / (8 * 255);
-    } else if (state.isPlaying) {
-      energy = 0.28 + 0.18 * Math.abs(Math.sin(performance.now() / 340));
-    }
+    if (anyVisible) {
+      let energy = 0.05;
+      if (state.activeBackend === 'local' && data && state.isPlaying) {
+        let sum = 0;
+        for (let i = 0; i < 8; i++) sum += data[i];
+        energy = sum / (8 * 255);
+      } else if (state.isPlaying) {
+        energy = 0.28 + 0.18 * Math.abs(Math.sin(performance.now() / 340));
+      }
 
-    const halo = $('npHalo');
-    if (halo) {
-      halo.style.transform = `scale(${(1 + energy * 0.14).toFixed(3)})`;
-      halo.style.opacity = state.isPlaying ? String((0.3 + energy * 0.4).toFixed(2)) : '0.15';
-    }
+      const halo = $('npHalo');
+      if (halo) {
+        halo.style.transform = `scale(${(1 + energy * 0.14).toFixed(3)})`;
+        halo.style.opacity = state.isPlaying ? String((0.3 + energy * 0.4).toFixed(2)) : '0.15';
+      }
 
-    const now = performance.now() / 220;
-    for (const { el, color } of canvases) {
-      if (!el) continue;
-      const ctx = el.getContext('2d');
-      const w = el.width;
-      const h = el.height;
-      ctx.clearRect(0, 0, w, h);
+      const now = performance.now() / 220;
+      for (const { el, color } of canvases) {
+        if (!el || el.offsetParent === null) continue;
+        const ctx = el.getContext('2d');
+        const w = el.width;
+        const h = el.height;
+        ctx.clearRect(0, 0, w, h);
 
-      const bars = 28;
-      const barWidth = w / bars - 3;
-      for (let i = 0; i < bars; i++) {
-        let val = 0.06;
-        if (state.activeBackend === 'local' && data && state.isPlaying) {
-          val = data[i] / 255;
-        } else if (state.isPlaying) {
-          val = 0.2 + 0.46 * Math.abs(Math.sin(now + i * 0.45) * Math.cos(now * 0.52 + i * 0.2));
+        const bars = 28;
+        const barWidth = w / bars - 3;
+        for (let i = 0; i < bars; i++) {
+          let val = 0.06;
+          if (state.activeBackend === 'local' && data && state.isPlaying) {
+            val = data[i] / 255;
+          } else if (state.isPlaying) {
+            val = 0.2 + 0.46 * Math.abs(Math.sin(now + i * 0.45) * Math.cos(now * 0.52 + i * 0.2));
+          }
+          const barH = Math.max(3, val * (h - 6));
+          ctx.fillStyle = state.isPlaying ? color : 'rgba(255,255,255,0.16)';
+          ctx.beginPath();
+          ctx.roundRect(i * (barWidth + 3), h - barH, barWidth, barH, 2);
+          ctx.fill();
         }
-        const barH = Math.max(3, val * (h - 6));
-        ctx.fillStyle = state.isPlaying ? color : 'rgba(255,255,255,0.16)';
-        ctx.beginPath();
-        ctx.roundRect(i * (barWidth + 3), h - barH, barWidth, barH, 2);
-        ctx.fill();
       }
     }
 
-    requestAnimationFrame(drawVisualizers);
+    if (state.isPlaying && anyVisible) {
+      vizRafId = requestAnimationFrame(drawVisualizers);
+    }
   }
 
   async function runHybridSearch(query, mode = state.searchMode) {
