@@ -351,11 +351,11 @@ html, body {
 .filter-chip:hover { background: rgba(255, 255, 255, 0.16); }
 .filter-chip.active { background: var(--crimson-bright); color: #fff; font-weight: 600; }
 
-/* Quick Picks 6-Grid */
+/* Quick Picks 8-Grid (4x2 on desktop, 2x4 on mobile) */
 .quick-picks-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
   margin-bottom: 26px;
 }
 .quick-pick-card {
@@ -950,7 +950,90 @@ html, body {
 /* Cinema Header 2-line Source */
 .cinema-top-center { display: flex; flex-direction: column; align-items: center; text-align: center; min-width: 0; }
 .cinema-from-kicker { font-size: 10px; font-weight: 700; letter-spacing: 1px; color: rgba(255,255,255,0.68); }
-.cinema-source-name { font-size: 12.5px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+.cinema-source-name { font-size: 12.5px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
+.cinema-title-row { display: flex; align-items: center; justify-content: center; gap: 14px; max-width: 440px; }
+.cinema-title-text { min-width: 0; }
+
+/* Desktop + Shared Search Browse Tiles & Genre Reels (Image 5) */
+#view-search:not(.has-search) #ytSearchBlock { display: none; }
+.mobile-browse-block { margin: 8px 0 24px; }
+.mobile-browse-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+.browse-tile {
+  position: relative;
+  overflow: hidden;
+  border: none;
+  border-radius: 10px;
+  padding: 18px 16px;
+  min-height: 104px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 6px;
+  text-align: left;
+  color: #ffffff;
+  cursor: pointer;
+  transition: transform 0.16s, filter 0.16s;
+}
+.browse-tile:hover { transform: translateY(-2px); filter: brightness(1.12); }
+.browse-tile::after {
+  content: '';
+  position: absolute;
+  right: -10px;
+  bottom: -10px;
+  width: 60px;
+  height: 60px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.16);
+  transform: rotate(22deg);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+.browse-tile span { position: relative; z-index: 1; font-size: 17px; font-weight: 800; letter-spacing: -0.2px; }
+.browse-tile small { position: relative; z-index: 1; font-size: 12px; color: rgba(255, 255, 255, 0.85); max-width: 82%; }
+.tile-crimson { background: linear-gradient(135deg, #d81320 0%, #68060d 100%); }
+.tile-ruby { background: linear-gradient(135deg, #9d174d 0%, #3d081e 100%); }
+.tile-blue { background: linear-gradient(135deg, #1d4ed8 0%, #0f172a 100%); }
+.tile-obsidian { background: linear-gradient(135deg, #3f3848 0%, #17141d 100%); }
+.tile-garnet { background: linear-gradient(135deg, #b91c1c 0%, #2a0a0c 100%); }
+.tile-violet { background: linear-gradient(135deg, #6d28d9 0%, #1e1038 100%); }
+.tile-navy { background: linear-gradient(135deg, #0f766e 0%, #07201e 100%); }
+.tile-amber { background: linear-gradient(135deg, #b45309 0%, #2b1404 100%); }
+
+.genre-explore-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.genre-reel-card {
+  position: relative;
+  height: 210px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  padding: 14px;
+  cursor: pointer;
+  text-align: left;
+  transition: transform 0.16s;
+}
+.genre-reel-card:hover { transform: translateY(-2px); }
+.reel-tamil {
+  background: radial-gradient(circle at 60% 25%, rgba(255, 42, 60, 0.65), transparent 55%),
+    linear-gradient(175deg, #4f0912 0%, #150508 60%, #08080a 100%);
+}
+.reel-indie {
+  background: radial-gradient(circle at 40% 28%, rgba(56, 189, 248, 0.35), transparent 58%),
+    linear-gradient(175deg, #1b2838 0%, #0c121a 60%, #07080a 100%);
+}
+.reel-pop {
+  background: radial-gradient(circle at 50% 28%, rgba(192, 132, 252, 0.45), transparent 58%),
+    linear-gradient(175deg, #3b174f 0%, #16091e 60%, #08080a 100%);
+}
+.reel-badge { font-size: 15px; font-weight: 800; color: #ffffff; text-shadow: 0 2px 8px rgba(0, 0, 0, 0.75); }
 
 /* Extra Modals & Sheets */
 .modal-tall { width: min(92vw, 420px); max-height: 78vh; display: flex; flex-direction: column; }

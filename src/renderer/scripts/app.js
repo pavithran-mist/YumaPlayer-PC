@@ -1580,8 +1580,14 @@
       btn.addEventListener('click', () => switchView(btn.dataset.view));
     });
     $('sidebarLikedItem').addEventListener('click', () => {
-      switchView('library');
-      document.querySelector('.tab-btn[data-lib-tab="liked"]')?.click();
+      openPlaylistDetail({
+        id: 'liked',
+        name: 'Liked Songs',
+        description: 'All songs and videos you saved',
+        owner: 'Pavithran',
+        tracks: state.store?.likedTracks || [],
+        kind: 'liked'
+      });
     });
     $('sidebarNewPlBtn').addEventListener('click', () => {
       switchView('library');
