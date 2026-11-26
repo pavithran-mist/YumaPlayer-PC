@@ -38,6 +38,16 @@ contextBridge.exposeInMainWorld('yumaAPI', {
     getSponsorSegments: (videoId) => ipcRenderer.invoke('sponsor:get', videoId)
   },
 
+  ytmPlayer: {
+    play: (videoId) => ipcRenderer.invoke('ytm:play', videoId),
+    pause: () => ipcRenderer.invoke('ytm:pause'),
+    resume: () => ipcRenderer.invoke('ytm:resume'),
+    stop: () => ipcRenderer.invoke('ytm:stop'),
+    seek: (seconds) => ipcRenderer.invoke('ytm:seek', seconds),
+    setVolume: (volume) => ipcRenderer.invoke('ytm:volume', volume),
+    onState: (cb) => ipcRenderer.on('ytm:state', (_e, st) => cb(st))
+  },
+
   updater: {
     check: () => ipcRenderer.invoke('updater:check'),
     download: () => ipcRenderer.invoke('updater:download'),

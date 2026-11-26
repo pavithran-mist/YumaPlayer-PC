@@ -1,6 +1,6 @@
 {
   "name": "yumaplayer-pc",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "YumaPlayer PC - Hybrid YouTube Music, Lossless Local Audio & Glassmorphism Desktop Player",
   "main": "src/main/main.js",
   "scripts": {
@@ -21,7 +21,7 @@
   "dependencies": {
     "electron-updater": "^6.6.2",
     "music-metadata": "^11.1.0",
-    "youtubei.js": "^13.4.0"
+    "youtubei.js": "^18.3.0"
   },
   "devDependencies": {
     "electron": "^35.0.0",
@@ -43,11 +43,15 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "build/icon.ico"

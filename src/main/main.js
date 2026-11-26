@@ -10,12 +10,14 @@ const { searchMusic, getHomeDiscovery, resolveAudioStream } = require('./youtube
 const { fetchLyrics } = require('./lyricsService');
 const { fetchSponsorSegments } = require('./sponsorBlock');
 const { UpdateManager } = require('./updater');
+const { YtmPlayer } = require('./ytmPlayer');
 
 let mainWindow = null;
 let streamServer = null;
 let streamPort = 0;
 let store = null;
 let updateManager = null;
+let ytmPlayer = null;
 
 function createStreamServer() {
   return new Promise((resolve) => {
@@ -157,6 +159,10 @@ function createWindow() {
   mainWindow.on('unmaximize', () => {
     mainWindow?.webContents.send('window:maximized-changed', false);
   });
+  mainWindow.on('closed', () => {
+    ytmPlayer?.destroy();
+    mainWindow = null;
+  });
 }
 
 function registerIpc() {
@@ -250,6 +256,14 @@ function registerIpc() {
   ipcMain.handle('lyrics:get', (_e, track) => fetchLyrics(track));
   ipcMain.handle('sponsor:get', (_e, videoId) => fetchSponsorSegments(videoId));
 
+  // Embedded YouTube Music Player
+  ipcMain.handle('ytm:play', (_e, videoId) => ytmPlayer.play(videoId));
+  ipcMain.handle('ytm:pause', () => ytmPlayer.pause());
+  ipcMain.handle('ytm:resume', () => ytmPlayer.resume());
+  ipcMain.handle('ytm:stop', () => ytmPlayer.stop());
+  ipcMain.handle('ytm:seek', (_e, seconds) => ytmPlayer.seek(seconds));
+  ipcMain.handle('ytm:volume', (_e, volume) => ytmPlayer.setVolume(volume));
+
   // Updates & External Links
   ipcMain.handle('updater:check', () => updateManager.checkForUpdates());
   ipcMain.handle('updater:download', () => updateManager.downloadUpdate());
@@ -267,6 +281,9 @@ app.whenReady().then(async () => {
   store = new JsonStore(storePath);
   updateManager = new UpdateManager(() => mainWindow);
   updateManager.init();
+  ytmPlayer = new YtmPlayer((ytState) => {
+    mainWindow?.webContents.send('ytm:state', ytState);
+  });
   await createStreamServer();
   registerIpc();
   createWindow();
@@ -281,6 +298,7 @@ app.whenReady().then(async () => {
 });
 
 app.on('window-all-closed', () => {
+  ytmPlayer?.destroy();
   if (streamServer) streamServer.close();
   if (process.platform !== 'darwin') app.quit();
 });

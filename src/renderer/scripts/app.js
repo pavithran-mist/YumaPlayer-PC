@@ -11,6 +11,7 @@
     queue: [],
     queueIndex: -1,
     currentTrack: null,
+    activeBackend: 'local',
     isPlaying: false,
     shuffle: false,
     repeat: false,
@@ -131,10 +132,21 @@
     updateAmbientFromArtwork(track.artwork);
 
     try {
-      const url = getTrackStreamUrl(track);
-      await engine.playUrl(url, { useCrossfade });
-      state.isPlaying = true;
-      $('playPauseBtn').textContent = '⏸';
+      if (track.source === 'youtube') {
+        engine.stop();
+        state.activeBackend = 'ytm';
+        $('playPauseBtn').textContent = '⏸';
+        state.isPlaying = true;
+        await window.yumaAPI.ytmPlayer.setVolume(state.store?.settings?.volume ?? 0.85);
+        await window.yumaAPI.ytmPlayer.play(track.videoId);
+      } else {
+        await window.yumaAPI.ytmPlayer.stop();
+        state.activeBackend = 'local';
+        const url = getTrackStreamUrl(track);
+        await engine.playUrl(url, { useCrossfade });
+        state.isPlaying = true;
+        $('playPauseBtn').textContent = '⏸';
+      }
       state.store.history = await window.yumaAPI.store.addHistory(track);
       renderHistory();
     } catch (err) {
@@ -226,6 +238,31 @@
     likeBtn.classList.toggle('liked', liked);
   }
 
+  function seekCurrent(seconds) {
+    if (state.activeBackend === 'ytm') {
+      window.yumaAPI.ytmPlayer.seek(seconds);
+    } else {
+      engine.seek(seconds);
+    }
+  }
+
+  function toggleCurrentPlay() {
+    if (!state.currentTrack) return;
+    if (state.activeBackend === 'ytm') {
+      if (state.isPlaying) {
+        window.yumaAPI.ytmPlayer.pause();
+        state.isPlaying = false;
+        $('playPauseBtn').textContent = '▶';
+      } else {
+        window.yumaAPI.ytmPlayer.resume();
+        state.isPlaying = true;
+        $('playPauseBtn').textContent = '⏸';
+      }
+    } else {
+      engine.togglePlay();
+    }
+  }
+
   function renderLyricsLines() {
     const container = $('lyricsContainer');
     container.innerHTML = '';
@@ -234,7 +271,7 @@
       div.className = 'lyric-line';
       div.dataset.idx = String(idx);
       div.textContent = line.text;
-      div.addEventListener('click', () => engine.seek(line.time));
+      div.addEventListener('click', () => seekCurrent(line.time));
       container.appendChild(div);
     });
   }
@@ -260,7 +297,7 @@
     for (const seg of state.sponsorSegments) {
       if (currentTime >= seg.start && currentTime < seg.end - 0.35 && state.lastSkippedSegmentStart !== seg.start) {
         state.lastSkippedSegmentStart = seg.start;
-        engine.seek(seg.end);
+        seekCurrent(seg.end);
         showToast(`Skipped ${seg.category} segment (SponsorBlock)`);
         break;
       }
@@ -287,9 +324,9 @@
 
   function prevTrack() {
     if (!state.queue.length) return;
-    const audio = engine.activeAudio;
-    if (audio && audio.currentTime > 4) {
-      engine.seek(0);
+    const currentPos = parseFloat($('seekSlider').value) || 0;
+    if (currentPos > 4) {
+      seekCurrent(0);
       return;
     }
     const prevIdx = (state.queueIndex - 1 + state.queue.length) % state.queue.length;
@@ -574,8 +611,14 @@
 
       const bars = 32;
       const barWidth = w / bars - 3;
+      const now = performance.now() / 220;
       for (let i = 0; i < bars; i++) {
-        const val = data ? data[i] / 255 : 0.08;
+        let val = 0.08;
+        if (state.activeBackend === 'local' && data) {
+          val = data[i] / 255;
+        } else if (state.activeBackend === 'ytm' && state.isPlaying) {
+          val = 0.25 + 0.5 * Math.abs(Math.sin(now + i * 0.45) * Math.cos(now * 0.6 + i * 0.2));
+        }
         const barH = Math.max(4, val * (h - 8));
         const grad = ctx.createLinearGradient(0, h - barH, 0, h);
         grad.addColorStop(0, color);
@@ -726,7 +769,7 @@
     });
 
     // Transport Controls
-    $('playPauseBtn').addEventListener('click', () => engine.togglePlay());
+    $('playPauseBtn').addEventListener('click', () => toggleCurrentPlay());
     $('nextBtn').addEventListener('click', () => nextTrack());
     $('prevBtn').addEventListener('click', () => prevTrack());
     $('shuffleBtn').addEventListener('click', (e) => {
@@ -739,12 +782,13 @@
     });
 
     $('seekSlider').addEventListener('input', (e) => {
-      engine.seek(parseFloat(e.target.value));
+      seekCurrent(parseFloat(e.target.value));
     });
 
     $('volumeSlider').addEventListener('input', async (e) => {
       const vol = parseFloat(e.target.value);
       engine.setVolume(vol);
+      window.yumaAPI.ytmPlayer.setVolume(vol);
       await window.yumaAPI.store.updateSettings({ volume: vol });
     });
 
@@ -816,7 +860,7 @@
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
       if (e.code === 'Space') {
         e.preventDefault();
-        engine.togglePlay();
+        toggleCurrentPlay();
       } else if (e.ctrlKey && e.key.toLowerCase() === 'f') {
         e.preventDefault();
         searchInput.focus();
@@ -891,6 +935,25 @@
     engine.setVolume(s.volume);
     engine.setCrossfade(s.crossfadeSeconds, s.bassSwap);
     engine.setAllEqBands(s.eqBands);
+
+    window.yumaAPI.ytmPlayer.onState((ytState) => {
+      if (state.activeBackend !== 'ytm' || ytState.videoId !== state.currentTrack?.videoId) return;
+      if (ytState.isAd) return;
+      const cur = ytState.currentTime || 0;
+      const dur = ytState.duration || 0;
+      const slider = $('seekSlider');
+      slider.max = dur > 0 ? dur : 100;
+      slider.value = cur;
+      $('currentTimeLabel').textContent = formatTime(cur);
+      $('durationLabel').textContent = formatTime(dur);
+      state.isPlaying = !ytState.paused && !ytState.ended;
+      $('playPauseBtn').textContent = state.isPlaying ? '⏸' : '▶';
+      syncLyricsHighlight(cur);
+      checkSponsorBlock(cur);
+      if (ytState.ended) {
+        nextTrack({ useCrossfade: false });
+      }
+    });
 
     // Sync Settings UI
     $('volumeSlider').value = s.volume;

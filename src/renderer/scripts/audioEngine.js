@@ -229,6 +229,16 @@
       }
     }
 
+    stop() {
+      this._cancelCrossfade();
+      this.decks.forEach((d) => {
+        d.audio.pause();
+        d.audio.src = '';
+        d.gain.gain.value = 0;
+        d.bassFilter.gain.value = 0;
+      });
+    }
+
     seek(seconds) {
       const audio = this.activeAudio;
       if (!audio || !Number.isFinite(audio.duration)) return;
