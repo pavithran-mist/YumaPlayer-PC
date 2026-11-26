@@ -23,10 +23,28 @@ function parseDurationText(text) {
   return 0;
 }
 
+function upgradeArtworkUrl(url) {
+  if (!url || typeof url !== 'string') return url;
+  // Upgrade Googleusercontent / YTM album art to crisp 1200x1200 HD
+  if (url.includes('googleusercontent.com') || url.includes('ggpht.com')) {
+    if (/=w\d+-h\d+/.test(url)) {
+      return url.replace(/=w\d+-h\d+[^?#]*/, '=w1200-h1200-l95-rj');
+    }
+    if (/=s\d+/.test(url)) {
+      return url.replace(/=s\d+[^?#]*/, '=s1200');
+    }
+  }
+  // Upgrade standard YouTube thumbnails to 1280x720 maxresdefault
+  if (url.includes('ytimg.com/vi/')) {
+    return url.replace(/\/(default|mqdefault|hqdefault|sddefault)\.jpg/, '/maxresdefault.jpg');
+  }
+  return url;
+}
+
 function pickThumbnail(thumbs) {
   if (!Array.isArray(thumbs) || thumbs.length === 0) return null;
   const sorted = [...thumbs].sort((a, b) => (b.width || 0) - (a.width || 0));
-  return sorted[0]?.url || null;
+  return upgradeArtworkUrl(sorted[0]?.url || null);
 }
 
 function normalizeYtmSong(item, mediaType = 'audio') {
@@ -53,7 +71,7 @@ function normalizeYtmSong(item, mediaType = 'audio') {
 
   const artwork =
     pickThumbnail(item.thumbnails || item.thumbnail?.contents || item.thumbnail) ||
-    `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+    `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`;
 
   return {
     id: `yt_${videoId}`,
@@ -213,6 +231,7 @@ async function resolveAudioStream(videoId) {
 
 module.exports = {
   parseDurationText,
+  upgradeArtworkUrl,
   normalizeYtmSong,
   searchMusic,
   getHomeDiscovery,

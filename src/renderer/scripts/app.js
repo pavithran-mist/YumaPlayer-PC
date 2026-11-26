@@ -48,9 +48,48 @@
       if (ICONS[name]) el.innerHTML = ICONS[name];
     });
     $('playPauseBtn').innerHTML = ICONS.play;
+    $('cinemaPlayBtn').innerHTML = ICONS.play;
     $('sleepTimerBtn').innerHTML = ICONS.moon;
     $('npLikeBtn').innerHTML = ICONS.heart;
     $('barLikeBtn').innerHTML = ICONS.heart;
+  }
+
+  function dismissSplash() {
+    const splash = $('splashOverlay');
+    if (!splash) return;
+    const hide = () => {
+      splash.classList.add('fade-out');
+      setTimeout(() => splash.classList.add('hidden'), 460);
+    };
+    splash.addEventListener('click', hide, { once: true });
+    setTimeout(hide, 1250);
+  }
+
+  function getHdArtwork(track) {
+    if (!track) return '';
+    let url = track.artwork || '';
+    if (!url && track.videoId) {
+      return `https://i.ytimg.com/vi/${track.videoId}/maxresdefault.jpg`;
+    }
+    if (url.includes('googleusercontent.com') || url.includes('ggpht.com')) {
+      if (/=w\d+-h\d+/.test(url)) return url.replace(/=w\d+-h\d+[^?#]*/, '=w1200-h1200-l95-rj');
+      if (/=s\d+/.test(url)) return url.replace(/=s\d+[^?#]*/, '=s1200');
+    }
+    if (url.includes('ytimg.com/vi/')) {
+      return url.replace(/\/(default|mqdefault|hqdefault|sddefault)\.jpg/, '/maxresdefault.jpg');
+    }
+    return url;
+  }
+
+  function applyArtWithFallback(imgEl, track) {
+    if (!imgEl || !track) return;
+    const hd = getHdArtwork(track);
+    imgEl.onerror = () => {
+      if (track.videoId && !imgEl.src.includes('hqdefault.jpg')) {
+        imgEl.src = `https://i.ytimg.com/vi/${track.videoId}/hqdefault.jpg`;
+      }
+    };
+    imgEl.src = hd;
   }
 
   function showToast(msg) {
@@ -114,22 +153,46 @@
   }
 
   function syncVideoStageVisibility() {
-    const showYtmVideo =
-      state.activeBackend === 'ytm' &&
-      state.videoMode &&
-      state.currentView === 'videos' &&
-      $('cinemaOverlay').classList.contains('hidden');
+    const cinemaOpen = !$('cinemaOverlay').classList.contains('hidden');
+    const isYtmVideo = state.activeBackend === 'ytm' && state.videoMode;
+    const isLocalVideo = state.activeBackend === 'localVideo';
 
-    const showLocalVideo = state.activeBackend === 'localVideo' && state.currentView === 'videos';
+    const showInlineYtm = isYtmVideo && state.currentView === 'videos' && !cinemaOpen;
+    const showCinemaYtm = isYtmVideo && cinemaOpen;
+    const showInlineLocal = isLocalVideo && state.currentView === 'videos' && !cinemaOpen;
+    const showCinemaLocal = isLocalVideo && cinemaOpen;
+
     const localVideoEl = $('localVideoPlayer');
-    const placeholder = $('videoPlaceholder');
+    const inlineHost = $('videoStageHost');
+    const cinemaVideoStage = $('cinemaVideoStage');
+    const cinemaAudioBody = $('cinemaAudioBody');
 
-    localVideoEl.classList.toggle('hidden', !showLocalVideo);
-    placeholder.classList.toggle('hidden', showYtmVideo || showLocalVideo);
+    if (showCinemaLocal) {
+      if (localVideoEl.parentElement !== cinemaVideoStage) {
+        cinemaVideoStage.appendChild(localVideoEl);
+      }
+      localVideoEl.classList.remove('hidden');
+    } else {
+      if (localVideoEl.parentElement !== inlineHost) {
+        inlineHost.insertBefore(localVideoEl, inlineHost.firstChild);
+      }
+      localVideoEl.classList.toggle('hidden', !showInlineLocal);
+    }
 
-    if (showYtmVideo) {
-      const host = $('videoStageHost');
-      const rect = host.getBoundingClientRect();
+    $('videoPlaceholder').classList.toggle('hidden', showInlineYtm || showInlineLocal);
+    cinemaVideoStage.classList.toggle('hidden', !showCinemaYtm && !showCinemaLocal);
+    cinemaAudioBody.classList.toggle('hidden', showCinemaYtm || showCinemaLocal);
+
+    if (showCinemaYtm) {
+      const rect = cinemaVideoStage.getBoundingClientRect();
+      window.yumaAPI.ytmPlayer.setStage(true, {
+        x: rect.left,
+        y: rect.top,
+        width: rect.width,
+        height: rect.height
+      });
+    } else if (showInlineYtm) {
+      const rect = inlineHost.getBoundingClientRect();
       window.yumaAPI.ytmPlayer.setStage(true, {
         x: rect.left,
         y: rect.top,
@@ -141,10 +204,22 @@
     }
   }
 
+  function openCinema() {
+    $('cinemaOverlay').classList.remove('hidden');
+    window.yumaAPI.windowControls.setFullscreen(true);
+    setTimeout(syncVideoStageVisibility, 80);
+  }
+
+  function closeCinema() {
+    $('cinemaOverlay').classList.add('hidden');
+    window.yumaAPI.windowControls.setFullscreen(false);
+    setTimeout(syncVideoStageVisibility, 80);
+  }
+
   function updateAmbientFromArtwork(src) {
     if (!state.store?.settings?.ambientBackdrop || !src) {
-      document.documentElement.style.setProperty('--wash-color', 'rgba(29, 185, 84, 0.24)');
-      document.documentElement.style.setProperty('--wash-secondary', 'rgba(70, 90, 140, 0.14)');
+      document.documentElement.style.setProperty('--wash-color', 'rgba(229, 9, 20, 0.28)');
+      document.documentElement.style.setProperty('--wash-secondary', 'rgba(120, 12, 24, 0.12)');
       return;
     }
     const img = new Image();
@@ -179,7 +254,9 @@
 
   function setPlayingUiState(playing) {
     state.isPlaying = playing;
-    $('playPauseBtn').innerHTML = playing ? ICONS.pause : ICONS.play;
+    const icon = playing ? ICONS.pause : ICONS.play;
+    $('playPauseBtn').innerHTML = icon;
+    $('cinemaPlayBtn').innerHTML = icon;
     renderAllLists();
     renderQueue();
   }
@@ -197,7 +274,7 @@
 
     renderNowPlaying(track);
     renderQueue();
-    updateAmbientFromArtwork(track.artwork);
+    updateAmbientFromArtwork(getHdArtwork(track));
 
     const localVid = $('localVideoPlayer');
     try {
@@ -302,10 +379,13 @@
     $('barArtist').textContent = track.artist;
     $('cinemaTitle').textContent = track.title;
     $('cinemaArtist').textContent = track.artist;
+    $('cinemaBarTitle').textContent = track.title;
+    $('cinemaBarArtist').textContent = track.artist;
 
     const setArt = (imgEl, phEl) => {
-      if (track.artwork) {
-        imgEl.src = track.artwork;
+      const hdUrl = getHdArtwork(track);
+      if (hdUrl) {
+        applyArtWithFallback(imgEl, track);
         imgEl.classList.remove('hidden');
         phEl.classList.add('hidden');
       } else {
@@ -336,9 +416,10 @@
     const isYt = track.source === 'youtube';
     $('npSwitchVideoBtn').classList.toggle('hidden', !isYt);
     $('barVideoToggleBtn').classList.toggle('hidden', !isYt);
-    $('npSwitchVideoBtn').innerHTML = state.videoMode
-      ? `${ICONS.music} Audio Mode`
-      : `${ICONS.video} Watch Video`;
+    $('cinemaVideoToggleBtn').classList.toggle('hidden', !isYt);
+    const modeLabel = state.videoMode ? `${ICONS.music} Audio Mode` : `${ICONS.video} Watch Video`;
+    $('npSwitchVideoBtn').innerHTML = modeLabel;
+    $('cinemaVideoToggleBtn').innerHTML = modeLabel;
 
     const liked = isLiked(track.id);
     ['npLikeBtn', 'barLikeBtn'].forEach((id) => {
@@ -346,6 +427,20 @@
       btn.innerHTML = liked ? ICONS.heartFilled : ICONS.heart;
       btn.classList.toggle('liked', liked);
     });
+  }
+
+  function updateProgressUi(cur, dur) {
+    const maxVal = dur > 0 ? dur : 100;
+    $('seekSlider').max = maxVal;
+    $('seekSlider').value = cur;
+    $('cinemaSeekSlider').max = maxVal;
+    $('cinemaSeekSlider').value = cur;
+    const curText = formatTime(cur);
+    const durText = formatTime(dur);
+    $('currentTimeLabel').textContent = curText;
+    $('durationLabel').textContent = durText;
+    $('cinemaCurTime').textContent = curText;
+    $('cinemaDurTime').textContent = durText;
   }
 
   function seekCurrent(seconds) {
@@ -387,7 +482,8 @@
     if (!state.currentTrack || state.currentTrack.source !== 'youtube') return;
     state.videoMode = !state.videoMode;
     renderNowPlaying(state.currentTrack);
-    if (state.videoMode) {
+    const cinemaOpen = !$('cinemaOverlay').classList.contains('hidden');
+    if (state.videoMode && !cinemaOpen) {
       switchView('videos');
     } else {
       syncVideoStageVisibility();
@@ -478,8 +574,9 @@
         ? `<div class="eq-bars-inline"><span></span><span></span><span></span></div><span class="row-play-icon">${ICONS.pause}</span>`
         : `<span class="row-num">${index + 1}</span><span class="row-play-icon">${ICONS.play}</span>`;
 
-    const thumbHtml = track.artwork
-      ? `<img class="track-thumb" src="${escapeHtml(track.artwork)}" alt="" loading="lazy" />`
+    const thumbUrl = getHdArtwork(track);
+    const thumbHtml = thumbUrl
+      ? `<img class="track-thumb" src="${escapeHtml(thumbUrl)}" alt="" loading="lazy" />`
       : `<div class="track-thumb">${track.mediaType === 'video' ? ICONS.video : ICONS.music}</div>`;
 
     const liked = isLiked(track.id);
@@ -589,10 +686,14 @@
       const card = document.createElement('div');
       card.className = 'quick-pick-card';
       card.innerHTML = `
-        <img src="${escapeHtml(track.artwork || '')}" alt="" loading="lazy" />
+        <img src="${escapeHtml(getHdArtwork(track))}" alt="" loading="lazy" />
         <span>${escapeHtml(track.title)}</span>
         <div class="qp-play">${ICONS.play}</div>
       `;
+      const imgEl = card.querySelector('img');
+      if (imgEl && track.videoId) {
+        imgEl.onerror = () => { imgEl.src = `https://i.ytimg.com/vi/${track.videoId}/hqdefault.jpg`; };
+      }
       card.addEventListener('click', () => playTrackWithContext(track, unique));
       grid.appendChild(card);
     });
@@ -626,12 +727,16 @@
         card.className = 'music-card';
         card.innerHTML = `
           <div class="card-art-wrap">
-            <img src="${escapeHtml(track.artwork || '')}" alt="" loading="lazy" />
+            <img src="${escapeHtml(getHdArtwork(track))}" alt="" loading="lazy" />
             <div class="card-play-fab">${ICONS.play}</div>
           </div>
           <div class="card-title">${escapeHtml(track.title)}</div>
           <div class="card-sub">${escapeHtml(track.artist)}</div>
         `;
+        const imgEl = card.querySelector('img');
+        if (imgEl && track.videoId) {
+          imgEl.onerror = () => { imgEl.src = `https://i.ytimg.com/vi/${track.videoId}/hqdefault.jpg`; };
+        }
         card.addEventListener('click', () => playTrackWithContext(track, sec.tracks));
         grid.appendChild(card);
       });
@@ -857,8 +962,8 @@
   function drawVisualizers() {
     const data = engine?.getSpectrum();
     const canvases = [
-      { el: $('sideVisualizer'), color: '#1db954' },
-      { el: $('cinemaVisualizer'), color: '#1ed760' }
+      { el: $('sideVisualizer'), color: '#ff2a3c' },
+      { el: $('cinemaVisualizer'), color: '#ff2a3c' }
     ];
 
     let energy = 0.05;
@@ -1113,10 +1218,7 @@
       searchInput.focus();
     });
 
-    $('videoTheaterBtn').addEventListener('click', () => {
-      $('cinemaOverlay').classList.remove('hidden');
-      syncVideoStageVisibility();
-    });
+    $('videoTheaterBtn').addEventListener('click', openCinema);
 
     const handleAddFolder = async () => {
       const res = await window.yumaAPI.library.pickFolder();
@@ -1166,10 +1268,7 @@
       if (state.activeBackend !== 'localVideo') return;
       const cur = localVid.currentTime || 0;
       const dur = Number.isFinite(localVid.duration) ? localVid.duration : 0;
-      $('seekSlider').max = dur > 0 ? dur : 100;
-      $('seekSlider').value = cur;
-      $('currentTimeLabel').textContent = formatTime(cur);
-      $('durationLabel').textContent = formatTime(dur);
+      updateProgressUi(cur, dur);
       syncLyricsHighlight(cur);
     });
     localVid.addEventListener('ended', () => {
@@ -1177,31 +1276,46 @@
     });
 
     $('playPauseBtn').addEventListener('click', toggleCurrentPlay);
+    $('cinemaPlayBtn').addEventListener('click', toggleCurrentPlay);
     $('nextBtn').addEventListener('click', () => nextTrack());
+    $('cinemaNextBtn').addEventListener('click', () => nextTrack());
     $('prevBtn').addEventListener('click', prevTrack);
+    $('cinemaPrevBtn').addEventListener('click', prevTrack);
 
-    $('shuffleBtn').addEventListener('click', (e) => {
+    const toggleShuffle = () => {
       state.shuffle = !state.shuffle;
-      e.currentTarget.classList.toggle('active', state.shuffle);
-    });
+      $('shuffleBtn').classList.toggle('active', state.shuffle);
+      $('cinemaShuffleBtn').classList.toggle('active', state.shuffle);
+    };
+    $('shuffleBtn').addEventListener('click', toggleShuffle);
+    $('cinemaShuffleBtn').addEventListener('click', toggleShuffle);
 
-    $('repeatBtn').addEventListener('click', (e) => {
+    const cycleRepeat = () => {
       const order = ['off', 'all', 'one'];
       state.repeatMode = order[(order.indexOf(state.repeatMode) + 1) % order.length];
-      e.currentTarget.classList.toggle('active', state.repeatMode !== 'off');
-      e.currentTarget.title = `Repeat: ${state.repeatMode}`;
+      const active = state.repeatMode !== 'off';
+      [$('repeatBtn'), $('cinemaRepeatBtn')].forEach((b) => {
+        b.classList.toggle('active', active);
+        b.title = `Repeat: ${state.repeatMode}`;
+      });
       showToast(`Repeat: ${state.repeatMode}`);
-    });
+    };
+    $('repeatBtn').addEventListener('click', cycleRepeat);
+    $('cinemaRepeatBtn').addEventListener('click', cycleRepeat);
 
     $('seekSlider').addEventListener('input', (e) => seekCurrent(parseFloat(e.target.value)));
+    $('cinemaSeekSlider').addEventListener('input', (e) => seekCurrent(parseFloat(e.target.value)));
 
-    $('volumeSlider').addEventListener('input', async (e) => {
-      const vol = parseFloat(e.target.value);
+    const updateVolumeAll = async (vol) => {
       engine.setVolume(vol);
       window.yumaAPI.ytmPlayer.setVolume(vol);
       localVid.volume = vol;
+      $('volumeSlider').value = vol;
+      $('cinemaVolSlider').value = vol;
       await window.yumaAPI.store.updateSettings({ volume: vol });
-    });
+    };
+    $('volumeSlider').addEventListener('input', (e) => updateVolumeAll(parseFloat(e.target.value)));
+    $('cinemaVolSlider').addEventListener('input', (e) => updateVolumeAll(parseFloat(e.target.value)));
 
     $('speedBtn').addEventListener('click', () => {
       const nextIdx = (SPEED_STEPS.indexOf(state.playbackRate) + 1) % SPEED_STEPS.length;
@@ -1227,15 +1341,10 @@
 
     $('npSwitchVideoBtn').addEventListener('click', toggleVideoMode);
     $('barVideoToggleBtn').addEventListener('click', toggleVideoMode);
+    $('cinemaVideoToggleBtn').addEventListener('click', toggleVideoMode);
 
-    $('cinemaBtn').addEventListener('click', () => {
-      $('cinemaOverlay').classList.remove('hidden');
-      syncVideoStageVisibility();
-    });
-    $('closeCinemaBtn').addEventListener('click', () => {
-      $('cinemaOverlay').classList.add('hidden');
-      syncVideoStageVisibility();
-    });
+    $('cinemaBtn').addEventListener('click', openCinema);
+    $('closeCinemaBtn').addEventListener('click', closeCinema);
 
     const toggleCurrentLike = async () => {
       if (!state.currentTrack) return;
@@ -1307,9 +1416,12 @@
       } else if (e.ctrlKey && e.key.toLowerCase() === 'f') {
         e.preventDefault();
         searchInput.focus();
+      } else if (e.key === 'F11') {
+        e.preventDefault();
+        if ($('cinemaOverlay').classList.contains('hidden')) openCinema();
+        else closeCinema();
       } else if (e.key === 'Escape' && !$('cinemaOverlay').classList.contains('hidden')) {
-        $('cinemaOverlay').classList.add('hidden');
-        syncVideoStageVisibility();
+        closeCinema();
       }
     });
 
@@ -1334,11 +1446,13 @@
 
     const ro = new ResizeObserver(() => syncVideoStageVisibility());
     ro.observe($('videoStageHost'));
+    ro.observe($('cinemaVideoStage'));
     window.addEventListener('resize', syncVideoStageVisibility);
   }
 
   async function bootstrap() {
     hydrateIcons();
+    dismissSplash();
     updateGreeting();
     const cfg = await window.yumaAPI.getConfig();
     state.streamPort = cfg.streamPort;
@@ -1349,11 +1463,7 @@
     engine = new DualDeckAudioEngine({
       onTimeUpdate: (cur, dur) => {
         if (state.activeBackend !== 'local') return;
-        const slider = $('seekSlider');
-        slider.max = dur > 0 ? dur : 100;
-        slider.value = cur;
-        $('currentTimeLabel').textContent = formatTime(cur);
-        $('durationLabel').textContent = formatTime(dur);
+        updateProgressUi(cur, dur);
         syncLyricsHighlight(cur);
         checkSponsorBlock(cur);
       },
@@ -1374,11 +1484,7 @@
       if (ytState.isAd) return;
       const cur = ytState.currentTime || 0;
       const dur = ytState.duration || 0;
-      const slider = $('seekSlider');
-      slider.max = dur > 0 ? dur : 100;
-      slider.value = cur;
-      $('currentTimeLabel').textContent = formatTime(cur);
-      $('durationLabel').textContent = formatTime(dur);
+      updateProgressUi(cur, dur);
       const playingNow = !ytState.paused && !ytState.ended;
       if (playingNow !== state.isPlaying) {
         setPlayingUiState(playingNow);
@@ -1391,6 +1497,7 @@
     });
 
     $('volumeSlider').value = s.volume;
+    $('cinemaVolSlider').value = s.volume;
     $('crossfadeSlider').value = s.crossfadeSeconds;
     $('crossfadeValue').textContent = `${s.crossfadeSeconds}s`;
     $('bassSwapToggle').checked = s.bassSwap;

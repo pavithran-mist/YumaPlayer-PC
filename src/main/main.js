@@ -156,6 +156,11 @@ function registerIpc() {
     return true;
   });
   ipcMain.handle('window:close', () => mainWindow?.close());
+  ipcMain.handle('window:setFullscreen', (_e, flag) => {
+    if (!mainWindow) return false;
+    mainWindow.setFullScreen(Boolean(flag));
+    return mainWindow.isFullScreen();
+  });
 
   // Store
   ipcMain.handle('store:getState', () => store.getState());

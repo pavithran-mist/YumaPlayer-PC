@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('yumaAPI', {
     minimize: () => ipcRenderer.invoke('window:minimize'),
     maximize: () => ipcRenderer.invoke('window:maximize'),
     close: () => ipcRenderer.invoke('window:close'),
+    setFullscreen: (flag) => ipcRenderer.invoke('window:setFullscreen', flag),
     onMaximizedChanged: (cb) => ipcRenderer.on('window:maximized-changed', (_e, val) => cb(val))
   },
 

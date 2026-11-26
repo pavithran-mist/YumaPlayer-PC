@@ -7,22 +7,39 @@
   <link rel="stylesheet" href="styles/main.css" />
 </head>
 <body>
+  <!-- Professional Opening Splash Animation -->
+  <div id="splashOverlay" class="splash-overlay">
+    <div class="splash-logo-wrap">
+      <div class="splash-glow"></div>
+      <svg class="splash-svg" viewBox="0 0 80 80" fill="none">
+        <rect x="4" y="4" width="72" height="72" rx="20" fill="#0B090B" stroke="#E50914" stroke-width="2.5"/>
+        <circle class="splash-ring" cx="40" cy="40" r="24" stroke="#FF2A3C" stroke-width="3.2" stroke-linecap="round"/>
+        <path d="M29 28L40 41M51 28L40 41M40 41V55" stroke="#FFFFFF" stroke-width="5.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="51" cy="28" r="4.5" fill="#FF2A3C"/>
+      </svg>
+    </div>
+    <div class="splash-text">
+      <div class="splash-title">Yuma<span>Player</span> PC</div>
+      <div class="splash-sub">Created by Pavithran</div>
+    </div>
+  </div>
+
   <div class="app-shell">
     <!-- Top Window Bar -->
     <header class="titlebar">
       <div class="titlebar-left">
         <div class="brand-logo">
           <svg class="brand-svg" viewBox="0 0 40 40" fill="none">
-            <rect x="2" y="2" width="36" height="36" rx="10" fill="url(#yumaGradBg)" stroke="url(#yumaGradRing)" stroke-width="2"/>
-            <circle cx="20" cy="20" r="12" stroke="url(#yumaGradRing)" stroke-width="2.2" stroke-dasharray="50 8" stroke-linecap="round"/>
+            <rect x="2" y="2" width="36" height="36" rx="10" fill="url(#yumaRedBg)" stroke="url(#yumaRedRing)" stroke-width="2"/>
+            <circle cx="20" cy="20" r="12" stroke="url(#yumaRedRing)" stroke-width="2.2" stroke-dasharray="50 8" stroke-linecap="round"/>
             <path d="M14.5 14L20 20.5M25.5 14L20 20.5M20 20.5V27.5" stroke="#F8FAFF" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
-            <circle cx="25.5" cy="14" r="2.6" fill="#1ED760"/>
+            <circle cx="25.5" cy="14" r="2.6" fill="#FF2A3C"/>
             <defs>
-              <linearGradient id="yumaGradBg" x1="0" y1="0" x2="40" y2="40">
-                <stop stop-color="#0B1020"/><stop offset="1" stop-color="#151B34"/>
+              <linearGradient id="yumaRedBg" x1="0" y1="0" x2="40" y2="40">
+                <stop stop-color="#0E090B"/><stop offset="1" stop-color="#1E0B10"/>
               </linearGradient>
-              <linearGradient id="yumaGradRing" x1="0" y1="0" x2="40" y2="40">
-                <stop stop-color="#1ED760"/><stop offset="0.5" stop-color="#22D3EE"/><stop offset="1" stop-color="#A855F7"/>
+              <linearGradient id="yumaRedRing" x1="0" y1="0" x2="40" y2="40">
+                <stop stop-color="#FF2A3C"/><stop offset="0.6" stop-color="#E50914"/><stop offset="1" stop-color="#991B1B"/>
               </linearGradient>
             </defs>
           </svg>
@@ -62,9 +79,8 @@
       </div>
     </header>
 
-    <!-- 3-Column Spotify Desktop Workspace -->
+    <!-- 3-Column Workspace -->
     <div class="workspace">
-      <!-- Left Sidebar -->
       <aside class="left-sidebar">
         <nav class="sidebar-nav">
           <button class="side-nav-item active" data-view="discover">
@@ -113,11 +129,10 @@
 
         <div class="sidebar-footer">
           <span>Created by <strong>Pavithran</strong></span>
-          <span id="sidebarVersion">v1.2.0</span>
+          <span id="sidebarVersion">v1.3.0</span>
         </div>
       </aside>
 
-      <!-- Center Main Stage -->
       <main class="main-content" id="mainContent">
         <!-- HOME VIEW -->
         <section id="view-discover" class="view active">
@@ -152,7 +167,7 @@
             </div>
             <div class="header-actions">
               <button id="videoSearchTriggerBtn" class="spotify-btn">Find Music Videos</button>
-              <button id="videoTheaterBtn" class="glass-btn">Cinema Mode</button>
+              <button id="videoTheaterBtn" class="glass-btn">Fullscreen</button>
             </div>
           </div>
 
@@ -315,7 +330,7 @@
               <div class="control-row">
                 <div>
                   <strong>Dynamic artwork tint</strong>
-                  <p class="muted">Subtly adapts the top background tint to the current cover art</p>
+                  <p class="muted">Subtly adapts the top wash to the current cover art</p>
                 </div>
                 <label class="switch">
                   <input id="ambientToggle" type="checkbox" checked />
@@ -397,7 +412,6 @@
         </section>
       </main>
 
-      <!-- Right Panel: Now Playing, Lyrics, Queue -->
       <aside class="side-panel" id="sidePanel">
         <div class="side-tabs">
           <button class="side-tab active" data-side-tab="now">Now Playing</button>
@@ -488,18 +502,24 @@
         <button id="quickQueueBtn" class="icon-btn" title="Queue" data-icon="queue"></button>
         <span class="icon-btn" data-icon="volume" style="cursor:default"></span>
         <input id="volumeSlider" type="range" min="0" max="1" step="0.01" value="0.85" />
-        <button id="cinemaBtn" class="icon-btn" title="Fullscreen Cinema Mode" data-icon="expand"></button>
+        <button id="cinemaBtn" class="icon-btn" title="Fullscreen Player" data-icon="expand"></button>
       </div>
     </footer>
   </div>
 
-  <!-- Cinema / Fullscreen Overlay -->
+  <!-- Fullscreen Audio & Video Player Overlay -->
   <div id="cinemaOverlay" class="cinema-overlay hidden">
     <div class="cinema-top">
-      <span id="cinemaBadge" class="codec-badge">NOW PLAYING</span>
+      <div class="hero-actions">
+        <span id="cinemaBadge" class="codec-badge">NOW PLAYING</span>
+        <button id="cinemaVideoToggleBtn" class="mini-mode-btn hidden"></button>
+      </div>
       <button id="closeCinemaBtn" class="glass-btn">Exit Fullscreen</button>
     </div>
-    <div class="cinema-body">
+
+    <div id="cinemaVideoStage" class="cinema-video-stage hidden"></div>
+
+    <div id="cinemaAudioBody" class="cinema-body">
       <div class="cinema-art-col">
         <div class="cinema-art-wrap">
           <img id="cinemaArt" src="" alt="" class="hidden" />
@@ -507,9 +527,39 @@
         </div>
         <h2 id="cinemaTitle">Not Playing</h2>
         <p id="cinemaArtist" class="muted">—</p>
-        <canvas id="cinemaVisualizer" width="420" height="72"></canvas>
+        <canvas id="cinemaVisualizer" width="420" height="70"></canvas>
       </div>
       <div class="cinema-lyrics-col" id="cinemaLyricsContainer"></div>
+    </div>
+
+    <!-- Fullscreen Playback Controls Bar -->
+    <div class="cinema-controls-bar">
+      <div class="bar-left">
+        <div class="bar-track-info">
+          <div id="cinemaBarTitle" class="bar-title">YumaPlayer PC</div>
+          <div id="cinemaBarArtist" class="bar-artist muted">by Pavithran</div>
+        </div>
+      </div>
+
+      <div class="bar-center">
+        <div class="transport-buttons">
+          <button id="cinemaShuffleBtn" class="icon-btn" title="Shuffle" data-icon="shuffle"></button>
+          <button id="cinemaPrevBtn" class="icon-btn" title="Previous" data-icon="prev"></button>
+          <button id="cinemaPlayBtn" class="play-btn" title="Play / Pause"></button>
+          <button id="cinemaNextBtn" class="icon-btn" title="Next" data-icon="next"></button>
+          <button id="cinemaRepeatBtn" class="icon-btn" title="Repeat" data-icon="repeat"></button>
+        </div>
+        <div class="seek-row">
+          <span id="cinemaCurTime" class="time-label">0:00</span>
+          <input id="cinemaSeekSlider" type="range" min="0" max="100" value="0" step="0.1" />
+          <span id="cinemaDurTime" class="time-label">0:00</span>
+        </div>
+      </div>
+
+      <div class="bar-right">
+        <span class="icon-btn" data-icon="volume" style="cursor:default"></span>
+        <input id="cinemaVolSlider" type="range" min="0" max="1" step="0.01" value="0.85" />
+      </div>
     </div>
   </div>
 

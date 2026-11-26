@@ -8,7 +8,7 @@ const { JsonStore } = require('../src/main/store');
 const { isSupportedAudioFile, getMimeType, walkAudioFiles, scanLocalFolders } = require('../src/main/library');
 const { normalizeSegments, findActiveSkipSegment } = require('../src/main/sponsorBlock');
 const { findSidecarLrc } = require('../src/main/lyricsService');
-const { parseDurationText, normalizeYtmSong } = require('../src/main/youtubeService');
+const { parseDurationText, upgradeArtworkUrl, normalizeYtmSong } = require('../src/main/youtubeService');
 const { parseLrc, findActiveLineIndex } = require('../src/renderer/scripts/lrcParser');
 const { computeCrossfadeGains, EQ_FREQUENCIES, EQ_PRESETS } = require('../src/renderer/scripts/audioEngine');
 const { normalizeVersion, compareSemver } = require('../src/main/updater');
@@ -127,6 +127,15 @@ test('YouTube Music normalizer parses song items cleanly', () => {
   const videoTrack = normalizeYtmSong({ id: 'vid123', title: 'MV' }, 'video');
   assert.equal(videoTrack.mediaType, 'video');
   assert.equal(videoTrack.codec, 'VIDEO');
+
+  assert.equal(
+    upgradeArtworkUrl('https://yt3.googleusercontent.com/abc=w120-h120-l90-rj'),
+    'https://yt3.googleusercontent.com/abc=w1200-h1200-l95-rj'
+  );
+  assert.equal(
+    upgradeArtworkUrl('https://i.ytimg.com/vi/BnmFO6yJeCw/hqdefault.jpg'),
+    'https://i.ytimg.com/vi/BnmFO6yJeCw/maxresdefault.jpg'
+  );
 });
 
 test('Updater semver comparison handles v-prefixes and release tags', () => {
