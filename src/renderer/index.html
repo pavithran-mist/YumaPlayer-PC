@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>YumaPlayer PC</title>
+  <link rel="stylesheet" href="styles/main.css" />
+</head>
+<body>
+  <!-- Live Ambient Backdrop -->
+  <div class="ambient-backdrop" id="ambientBackdrop">
+    <div class="ambient-orb orb-1" id="orb1"></div>
+    <div class="ambient-orb orb-2" id="orb2"></div>
+    <div class="ambient-orb orb-3"></div>
+  </div>
+
+  <div class="app-shell">
+    <!-- Custom Glass Titlebar -->
+    <header class="titlebar">
+      <div class="titlebar-left">
+        <div class="brand-logo">
+          <span class="brand-dot"></span>
+          <span class="brand-name">YumaPlayer</span>
+          <span class="brand-badge">PC</span>
+        </div>
+      </div>
+
+      <div class="titlebar-search">
+        <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <path d="m21 21-4.3-4.3"></path>
+        </svg>
+        <input
+          id="globalSearchInput"
+          type="text"
+          placeholder="Search YouTube Music or local FLAC/MP3 tracks..."
+          autocomplete="off"
+        />
+        <button id="clearSearchBtn" class="icon-btn hidden" title="Clear search">✕</button>
+      </div>
+
+      <div class="titlebar-controls">
+        <button id="openFilesQuickBtn" class="pill-btn" title="Open Local Audio Files">
+          + Open Files
+        </button>
+        <button id="minBtn" class="win-btn" title="Minimize">─</button>
+        <button id="maxBtn" class="win-btn" title="Maximize">□</button>
+        <button id="closeBtn" class="win-btn close" title="Close">✕</button>
+      </div>
+    </header>
+
+    <!-- Main Split Workspace -->
+    <div class="workspace">
+      <main class="main-content" id="mainContent">
+        <!-- DISCOVER VIEW -->
+        <section id="view-discover" class="view active">
+          <div class="hero-card glass-panel" id="heroCard">
+            <div class="hero-info">
+              <span class="hero-tag">HYBRID HI-RES • YOUTUBE MUSIC + LOCAL FLAC</span>
+              <h1>Fluid Glassmorphism Audio on PC</h1>
+              <p>
+                Stream from YouTube Music with automatic SponsorBlock skipping, or drop your
+                local Hi-Res FLAC &amp; MP3 folders from any drive with dual-deck crossfade and 10-band DSP.
+              </p>
+              <div class="hero-actions">
+                <button class="primary-btn" id="heroAddFolderBtn">Add Music Folder (HDD/SSD)</button>
+                <button class="glass-btn" id="heroRefreshFeedBtn">Refresh Discovery</button>
+              </div>
+            </div>
+            <div class="hero-visual">
+              <canvas id="heroVisualizer" width="320" height="120"></canvas>
+            </div>
+          </div>
+
+          <div id="discoveryShelves" class="shelves-container">
+            <div class="empty-state glass-panel">Loading discovery mixes...</div>
+          </div>
+        </section>
+
+        <!-- SEARCH VIEW -->
+        <section id="view-search" class="view">
+          <div class="section-header">
+            <h2>Search Results</h2>
+            <span id="searchMeta" class="muted">Type in the search bar above to search YouTube Music &amp; local files</span>
+          </div>
+
+          <div id="localSearchBlock" class="hidden">
+            <h3 class="sub-heading">Matching Local Tracks</h3>
+            <div id="localSearchList" class="track-list"></div>
+          </div>
+
+          <div id="ytSearchBlock">
+            <h3 class="sub-heading">YouTube Music</h3>
+            <div id="ytSearchList" class="track-list">
+              <div class="empty-state glass-panel">Search for any song, artist, or album.</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- LIBRARY VIEW -->
+        <section id="view-library" class="view">
+          <div class="section-header">
+            <h2>Your Library</h2>
+            <div class="header-actions">
+              <button class="primary-btn" id="addFolderBtn">+ Add Music Folder</button>
+              <button class="glass-btn" id="rescanBtn">Rescan</button>
+            </div>
+          </div>
+
+          <div class="tab-bar">
+            <button class="tab-btn active" data-lib-tab="local">Local Audio</button>
+            <button class="tab-btn" data-lib-tab="liked">Liked Songs</button>
+            <button class="tab-btn" data-lib-tab="playlists">Playlists</button>
+            <button class="tab-btn" data-lib-tab="history">Recently Played</button>
+          </div>
+
+          <div id="lib-panel-local" class="lib-panel active">
+            <div id="folderChips" class="folder-chips"></div>
+            <div id="localTracksList" class="track-list">
+              <div class="empty-state glass-panel">
+                No local folders added yet. Click <strong>+ Add Music Folder</strong> or drag &amp; drop audio files anywhere!
+              </div>
+            </div>
+          </div>
+
+          <div id="lib-panel-liked" class="lib-panel">
+            <div id="likedTracksList" class="track-list"></div>
+          </div>
+
+          <div id="lib-panel-playlists" class="lib-panel">
+            <div class="playlist-creator glass-panel">
+              <input id="newPlaylistInput" type="text" placeholder="New playlist name..." />
+              <button id="createPlaylistBtn" class="primary-btn">Create Playlist</button>
+            </div>
+            <div id="playlistsContainer" class="playlists-grid"></div>
+          </div>
+
+          <div id="lib-panel-history" class="lib-panel">
+            <div id="historyTracksList" class="track-list"></div>
+          </div>
+        </section>
+
+        <!-- DSP / SETTINGS VIEW -->
+        <section id="view-dsp" class="view">
+          <div class="section-header">
+            <h2>Audiophile DSP &amp; Settings</h2>
+            <span class="muted">Real-time Web Audio Pipeline (Dual-Deck + 10-Band EQ)</span>
+          </div>
+
+          <div class="dsp-grid">
+            <div class="glass-panel dsp-card">
+              <h3>Dual-Deck Crossfade &amp; Playback</h3>
+              <div class="control-row">
+                <div>
+                  <strong>Crossfade Duration</strong>
+                  <p class="muted">Smooth equal-power transition between tracks</p>
+                </div>
+                <div class="range-wrap">
+                  <input id="crossfadeSlider" type="range" min="0" max="12" step="1" value="4" />
+                  <span id="crossfadeValue" class="badge">4s</span>
+                </div>
+              </div>
+
+              <div class="control-row">
+                <div>
+                  <strong>Smart Bass-Swap Filter</strong>
+                  <p class="muted">Attenuates outgoing sub-bass during transitions</p>
+                </div>
+                <label class="switch">
+                  <input id="bassSwapToggle" type="checkbox" checked />
+                  <span class="slider"></span>
+                </label>
+              </div>
+
+              <div class="control-row">
+                <div>
+                  <strong>SponsorBlock Auto-Skip</strong>
+                  <p class="muted">Skips non-music intros, outros &amp; sponsor segments on YouTube tracks</p>
+                </div>
+                <label class="switch">
+                  <input id="sponsorBlockToggle" type="checkbox" checked />
+                  <span class="slider"></span>
+                </label>
+              </div>
+
+              <div class="control-row">
+                <div>
+                  <strong>Live Ambient Backdrop</strong>
+                  <p class="muted">Dynamic glass background tinted from album artwork</p>
+                </div>
+                <label class="switch">
+                  <input id="ambientToggle" type="checkbox" checked />
+                  <span class="slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <div class="glass-panel dsp-card eq-card">
+              <div class="eq-header">
+                <div>
+                  <h3>10-Band Equalizer</h3>
+                  <p class="muted">Preamp &amp; frequency shaping (-12 dB to +12 dB)</p>
+                </div>
+                <select id="eqPresetSelect" class="glass-select">
+                  <option value="Flat">Flat</option>
+                  <option value="Bass Boost">Bass Boost</option>
+                  <option value="Hi-Res Studio">Hi-Res Studio</option>
+                  <option value="Vocal Clarity">Vocal Clarity</option>
+                  <option value="Club / EDM">Club / EDM</option>
+                  <option value="Late Night">Late Night</option>
+                  <option value="Custom">Custom</option>
+                </select>
+              </div>
+
+              <div class="eq-sliders" id="eqSlidersContainer"></div>
+            </div>
+
+            <div class="glass-panel dsp-card">
+              <h3>Online Updates &amp; Upstream Sync</h3>
+              <div class="control-row">
+                <div>
+                  <strong>YumaPlayer PC Version</strong>
+                  <p id="updateStatusText" class="muted">Checking for updates...</p>
+                </div>
+                <div class="hero-actions">
+                  <button id="checkUpdatesBtn" class="glass-btn">Check Updates</button>
+                  <button id="downloadUpdateBtn" class="primary-btn hidden">Download Update</button>
+                  <button id="installUpdateBtn" class="primary-btn hidden">Restart &amp; Install</button>
+                </div>
+              </div>
+
+              <div class="control-row">
+                <div>
+                  <strong>Upstream MuwMx/YumaPlayer (Android)</strong>
+                  <p id="upstreamStatusText" class="muted">Not checked yet</p>
+                </div>
+                <button id="openUpstreamBtn" class="glass-btn hidden">View Upstream</button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <!-- Right Side Panel: Now Playing + Synced Lyrics + Queue -->
+      <aside class="side-panel glass-panel" id="sidePanel">
+        <div class="side-tabs">
+          <button class="side-tab active" data-side-tab="now">Now Playing</button>
+          <button class="side-tab" data-side-tab="lyrics">Lyrics</button>
+          <button class="side-tab" data-side-tab="queue">Queue (<span id="queueCount">0</span>)</button>
+        </div>
+
+        <div id="side-now" class="side-content active">
+          <div class="np-artwork-wrap">
+            <img id="npArtwork" src="" alt="Album Art" class="np-artwork hidden" />
+            <div id="npArtworkPlaceholder" class="np-artwork-placeholder">♪</div>
+          </div>
+          <div class="np-meta">
+            <div class="np-title-row">
+              <div>
+                <h3 id="npTitle">Nothing Playing</h3>
+                <p id="npArtist" class="muted">Select a track to start listening</p>
+              </div>
+              <button id="npLikeBtn" class="icon-btn like-btn" title="Like">♡</button>
+            </div>
+            <div class="np-badges">
+              <span id="npCodecBadge" class="codec-badge">IDLE</span>
+              <span id="npSponsorBadge" class="codec-badge sponsor hidden">SponsorBlock Active</span>
+            </div>
+          </div>
+          <canvas id="sideVisualizer" width="300" height="72" class="side-visualizer"></canvas>
+        </div>
+
+        <div id="side-lyrics" class="side-content">
+          <div class="lyrics-meta">
+            <span id="lyricsSourceBadge" class="muted">Lyrics</span>
+          </div>
+          <div id="lyricsContainer" class="lyrics-container">
+            <div class="empty-state">Play a track to load synchronized lyrics.</div>
+          </div>
+        </div>
+
+        <div id="side-queue" class="side-content">
+          <div class="queue-header">
+            <span class="muted">Up Next</span>
+            <button id="clearQueueBtn" class="text-btn">Clear</button>
+          </div>
+          <div id="queueList" class="queue-list"></div>
+        </div>
+      </aside>
+    </div>
+
+    <!-- Telegram-Style Floating Island Dock + Player Bar -->
+    <div class="floating-dock-wrapper">
+      <div class="floating-island glass-panel">
+        <!-- Nav Pills -->
+        <nav class="island-nav">
+          <button class="nav-pill active" data-view="discover" title="Discover">
+            <span>Discover</span>
+          </button>
+          <button class="nav-pill" data-view="search" title="Search">
+            <span>Search</span>
+          </button>
+          <button class="nav-pill" data-view="library" title="Library">
+            <span>Library</span>
+          </button>
+          <button class="nav-pill" data-view="dsp" title="DSP & EQ">
+            <span>DSP / EQ</span>
+          </button>
+        </nav>
+
+        <div class="island-divider"></div>
+
+        <!-- Transport Controls & Progress -->
+        <div class="player-controls-center">
+          <div class="transport-buttons">
+            <button id="shuffleBtn" class="icon-btn" title="Shuffle">⇄</button>
+            <button id="prevBtn" class="icon-btn" title="Previous">⏮</button>
+            <button id="playPauseBtn" class="play-btn" title="Play / Pause">▶</button>
+            <button id="nextBtn" class="icon-btn" title="Next">⏭</button>
+            <button id="repeatBtn" class="icon-btn" title="Repeat">↻</button>
+          </div>
+          <div class="seek-row">
+            <span id="currentTimeLabel" class="time-label">0:00</span>
+            <input id="seekSlider" type="range" min="0" max="100" value="0" step="0.1" />
+            <span id="durationLabel" class="time-label">0:00</span>
+          </div>
+        </div>
+
+        <div class="island-divider"></div>
+
+        <!-- Volume & Quick Lyrics -->
+        <div class="island-right">
+          <button id="quickLyricsBtn" class="icon-btn" title="Lyrics">🎙</button>
+          <span class="vol-icon">🔊</span>
+          <input id="volumeSlider" type="range" min="0" max="1" step="0.01" value="0.85" />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Playlist Picker Modal -->
+  <div id="playlistModal" class="modal hidden">
+    <div class="modal-card glass-panel">
+      <div class="modal-header">
+        <h3>Add to Playlist</h3>
+        <button id="closePlaylistModal" class="icon-btn">✕</button>
+      </div>
+      <div id="playlistModalList" class="modal-list"></div>
+    </div>
+  </div>
+
+  <!-- Toast notification -->
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="scripts/lrcParser.js"></script>
+  <script src="scripts/audioEngine.js"></script>
+  <script src="scripts/app.js"></script>
+</body>
+</html>

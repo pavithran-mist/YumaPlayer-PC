@@ -1,0 +1,69 @@
+{
+  "name": "yumaplayer-pc",
+  "version": "1.0.0",
+  "description": "YumaPlayer PC - Hybrid YouTube Music, Lossless Local Audio & Glassmorphism Desktop Player",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test tests/*.test.js",
+    "build:win": "electron-builder --win",
+    "build:dir": "electron-builder --win --dir"
+  },
+  "keywords": [
+    "music-player",
+    "youtube-music",
+    "flac",
+    "electron",
+    "glassmorphism"
+  ],
+  "author": "pavithran-mist",
+  "license": "GPL-3.0",
+  "dependencies": {
+    "electron-updater": "^6.6.2",
+    "music-metadata": "^11.1.0",
+    "youtubei.js": "^13.4.0"
+  },
+  "devDependencies": {
+    "electron": "^35.0.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.yumaplayer.pc",
+    "productName": "YumaPlayer PC",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "build/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "pavithran-mist",
+        "repo": "YumaPlayer-PC"
+      }
+    ]
+  }
+}

@@ -1,0 +1,52 @@
+name: Track Upstream MuwMx/YumaPlayer Updates
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  check-upstream:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check MuwMx/YumaPlayer latest release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const upstreamRes = await fetch('https://api.github.com/repos/MuwMx/YumaPlayer/releases/latest', {
+              headers: { 'User-Agent': 'YumaPlayer-PC-Sync' }
+            });
+            if (!upstreamRes.ok) {
+              core.info('Could not fetch upstream release.');
+              return;
+            }
+            const rel = await upstreamRes.json();
+            const title = `Upstream Update: MuwMx/YumaPlayer ${rel.tag_name}`;
+
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'all',
+              per_page: 30
+            });
+            if (existing.data.some((i) => i.title === title)) {
+              core.info(`Issue already exists for ${rel.tag_name}`);
+              return;
+            }
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body: [
+                `Upstream **MuwMx/YumaPlayer** released **${rel.tag_name}** (${rel.name || rel.tag_name}).`,
+                '',
+                `Release URL: ${rel.html_url}`,
+                '',
+                '### Upstream Notes',
+                rel.body || '_No release notes provided._'
+              ].join('\n')
+            });
