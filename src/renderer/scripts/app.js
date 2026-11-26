@@ -124,6 +124,9 @@
   }
 
   function getTrackStreamUrl(track) {
+    if (window.YumaAndroid) {
+      return `http://127.0.0.1:${state.streamPort}/local?uri=${encodeURIComponent(track.filePath)}`;
+    }
     return `http://127.0.0.1:${state.streamPort}/local?path=${encodeURIComponent(track.filePath)}`;
   }
 
@@ -259,6 +262,13 @@
     const icon = playing ? ICONS.pause : ICONS.play;
     $('playPauseBtn').innerHTML = icon;
     $('cinemaPlayBtn').innerHTML = icon;
+    if (window.YumaAndroid && state.currentTrack) {
+      window.YumaAndroid.updateMediaNotification(
+        state.currentTrack.title || 'YumaPlayer',
+        state.currentTrack.artist || 'by Pavithran',
+        Boolean(playing)
+      );
+    }
     renderAllLists();
     renderQueue();
   }
@@ -1395,6 +1405,12 @@
 
     $('cinemaBtn').addEventListener('click', openCinema);
     $('closeCinemaBtn').addEventListener('click', closeCinema);
+    document.querySelector('.bar-left .bar-track-info')?.addEventListener('click', () => {
+      if (window.innerWidth <= 900 && state.currentTrack) openCinema();
+    });
+    document.querySelector('.bar-left .bar-thumb-wrap')?.addEventListener('click', () => {
+      if (window.innerWidth <= 900 && state.currentTrack) openCinema();
+    });
 
     const toggleCurrentLike = async () => {
       if (!state.currentTrack) return;

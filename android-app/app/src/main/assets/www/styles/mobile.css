@@ -1,0 +1,152 @@
+/* Mobile Android Overrides for YumaPlayer Red & Black UI */
+@media (max-width: 900px) {
+  .titlebar {
+    height: 54px;
+    padding: 0 10px;
+    gap: 8px;
+  }
+  .history-nav, .win-btn, .brand-by {
+    display: none !important;
+  }
+  .titlebar-search {
+    max-width: none;
+    height: 36px;
+  }
+  .pill-btn span:last-child {
+    display: none;
+  }
+
+  .workspace {
+    display: flex;
+    flex-direction: column;
+    padding: 0 6px;
+    gap: 0;
+  }
+
+  /* Turn Left Sidebar into Android Bottom Navigation Bar */
+  .left-sidebar {
+    order: 3;
+    height: 58px;
+    flex-direction: row;
+    border-radius: 0;
+    background: #08080a;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    flex-shrink: 0;
+  }
+  .sidebar-divider,
+  .sidebar-library-head,
+  .sidebar-playlists,
+  .sidebar-footer {
+    display: none !important;
+  }
+  .sidebar-nav {
+    flex-direction: row;
+    width: 100%;
+    padding: 4px;
+    justify-content: space-around;
+  }
+  .side-nav-item {
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 6px 2px;
+    font-size: 10.5px;
+    text-align: center;
+  }
+  .side-nav-item span:last-child {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 64px;
+  }
+
+  .main-content {
+    order: 1;
+    flex: 1;
+    border-radius: 10px;
+  }
+
+  .side-panel {
+    display: none;
+  }
+
+  .view {
+    padding: 14px 12px 24px;
+  }
+  .home-header h1 {
+    font-size: 21px;
+  }
+  .quick-picks-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .track-table-head {
+    display: none;
+  }
+  .track-row {
+    grid-template-columns: 26px 1fr auto;
+    padding: 8px 6px;
+    gap: 10px;
+  }
+  .track-album, .track-row > div:nth-child(4) {
+    display: none;
+  }
+  .track-actions {
+    opacity: 1;
+  }
+  .track-dur {
+    display: none;
+  }
+
+  /* Mobile Compact Player Bar sitting above Bottom Nav */
+  .player-bar {
+    height: 66px;
+    padding: 0 10px;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+  }
+  .bar-center {
+    flex-direction: row;
+  }
+  .seek-row, #shuffleBtn, #repeatBtn, .bar-right {
+    display: none;
+  }
+  .bar-thumb-wrap {
+    width: 44px;
+    height: 44px;
+  }
+
+  /* Fullscreen Mobile Cinema Layout */
+  .cinema-overlay {
+    padding: 16px;
+  }
+  .cinema-body {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .cinema-art-wrap {
+    width: 220px;
+    height: 220px;
+  }
+  .cinema-lyrics-col {
+    max-height: 26vh;
+    text-align: center;
+  }
+  .cinema-controls-bar {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 12px;
+  }
+  .cinema-controls-bar .bar-left,
+  .cinema-controls-bar .bar-right {
+    display: none;
+  }
+  .cinema-controls-bar .seek-row {
+    display: flex;
+  }
+}

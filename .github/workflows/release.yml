@@ -1,4 +1,4 @@
-name: Build & Release Windows Installer
+name: Build & Release Windows + Android
 
 on:
   push:
@@ -34,21 +34,69 @@ jobs:
       - name: Build Windows Installer & Portable EXE
         run: npx electron-builder --win --publish never
 
-      - name: Publish GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
+      - name: Upload Windows Build Artifacts
+        uses: actions/upload-artifact@v4
         with:
-          files: |
+          name: windows-dist
+          path: |
             dist/*.exe
             dist/*.blockmap
             dist/latest.yml
-          generate_release_notes: true
 
-      - name: Upload Windows EXE Artifacts
+  build-android:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle 8.7
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Build Signed Android APK
+        working-directory: android-app
+        run: gradle assembleRelease --no-daemon
+
+      - name: Prepare Versioned APK
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          mkdir -p android-dist
+          cp android-app/app/build/outputs/apk/release/app-release.apk "android-dist/YumaPlayer-Android-${VERSION}.apk"
+
+      - name: Upload Android APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: YumaPlayer-PC-Windows
-          path: |
-            dist/*.exe
-            dist/latest.yml
-          if-no-files-found: warn
+          name: android-dist
+          path: android-dist/*.apk
+
+  publish-release:
+    needs: [build-windows, build-android]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download Windows Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-dist
+          path: release-assets
+
+      - name: Download Android Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: android-dist
+          path: release-assets
+
+      - name: Publish GitHub Release (PC EXE + Android APK)
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/*
+          generate_release_notes: true

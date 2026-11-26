@@ -1,5 +1,9 @@
 node_modules/
 dist/
+android-dist/
+android-app/.gradle/
+android-app/build/
+android-app/app/build/
 *.log
 .DS_Store
 Thumbs.db
