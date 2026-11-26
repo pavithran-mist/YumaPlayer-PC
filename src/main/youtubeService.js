@@ -29,7 +29,7 @@ function pickThumbnail(thumbs) {
   return sorted[0]?.url || null;
 }
 
-function normalizeYtmSong(item) {
+function normalizeYtmSong(item, mediaType = 'audio') {
   if (!item) return null;
   const videoId = item.id || item.video_id;
   if (!videoId) return null;
@@ -45,7 +45,7 @@ function normalizeYtmSong(item) {
     item.subtitle?.text ||
     'YouTube Music';
 
-  const album = item.album?.name || 'YouTube Music';
+  const album = item.album?.name || (mediaType === 'video' ? 'Music Video' : 'YouTube Music');
   const duration =
     typeof item.duration === 'number'
       ? item.duration
@@ -59,17 +59,18 @@ function normalizeYtmSong(item) {
     id: `yt_${videoId}`,
     videoId,
     source: 'youtube',
+    mediaType,
     title: String(title),
     artist: String(artist),
     album: String(album),
     duration: Number(duration) || 0,
     artwork,
-    codec: 'OPUS',
+    codec: mediaType === 'video' ? 'VIDEO' : 'OPUS',
     lossless: false
   };
 }
 
-async function searchMusic(query) {
+async function searchMusic(query, mode = 'all') {
   const clean = String(query || '').trim();
   if (!clean) return [];
 
@@ -77,39 +78,44 @@ async function searchMusic(query) {
   const tracks = [];
   const seen = new Set();
 
-  // Prefer YouTube Music song search
-  try {
-    const res = await yt.music.search(clean, { type: 'song' });
-    const shelves = res.results || res.contents || [];
-    for (const shelf of shelves) {
-      const items = shelf.contents || [shelf];
-      for (const item of items) {
-        const track = normalizeYtmSong(item);
+  if (mode === 'all' || mode === 'songs') {
+    try {
+      const res = await yt.music.search(clean, { type: 'song' });
+      const shelves = res.results || res.contents || [];
+      for (const shelf of shelves) {
+        const items = shelf.contents || [shelf];
+        for (const item of items) {
+          const track = normalizeYtmSong(item, 'audio');
+          if (track && !seen.has(track.videoId)) {
+            seen.add(track.videoId);
+            tracks.push(track);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('YTM music.search fallback:', err.message);
+    }
+  }
+
+  if (mode === 'videos' || (mode === 'all' && tracks.length < 18)) {
+    try {
+      const ytQuery = mode === 'videos' ? `${clean} official music video` : clean;
+      const res = await yt.search(ytQuery, { type: 'video' });
+      const videos = res.videos || res.results || [];
+      for (const v of videos) {
+        const track = normalizeYtmSong(v, 'video');
         if (track && !seen.has(track.videoId)) {
           seen.add(track.videoId);
           tracks.push(track);
         }
+        if (tracks.length >= 28) break;
       }
-    }
-  } catch (err) {
-    console.warn('YTM music.search fallback to standard search:', err.message);
-  }
-
-  // Fallback to general YouTube search if YTM returned nothing
-  if (tracks.length === 0) {
-    const res = await yt.search(clean, { type: 'video' });
-    const videos = res.videos || res.results || [];
-    for (const v of videos) {
-      const track = normalizeYtmSong(v);
-      if (track && !seen.has(track.videoId)) {
-        seen.add(track.videoId);
-        tracks.push(track);
-      }
-      if (tracks.length >= 20) break;
+    } catch (err) {
+      console.warn('YouTube video search failed:', err.message);
     }
   }
 
-  return tracks.slice(0, 25);
+  return tracks.slice(0, 28);
 }
 
 async function getHomeDiscovery() {

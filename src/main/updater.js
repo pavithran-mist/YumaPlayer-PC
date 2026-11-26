@@ -1,4 +1,6 @@
-const { app } = require('electron');
+const { app, shell } = require('electron');
+const fs = require('fs');
+const path = require('path');
 
 const UPSTREAM_REPO = 'MuwMx/YumaPlayer';
 const PC_REPO = 'pavithran-mist/YumaPlayer-PC';
@@ -19,20 +21,19 @@ function compareSemver(a, b) {
 
 async function fetchLatestGithubRelease(repo) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 6000);
+  const timeout = setTimeout(() => controller.abort(), 6500);
   try {
     const res = await fetch(`https://api.github.com/repos/${repo}/releases/latest`, {
       signal: controller.signal,
       headers: {
-        'User-Agent': 'YumaPlayer-PC/1.0.0',
+        'User-Agent': 'YumaPlayer-PC/1.1.0',
         Accept: 'application/vnd.github+json'
       }
     });
     if (!res.ok) {
-      // Fallback to tags if no formal release exists yet
       const tagsRes = await fetch(`https://api.github.com/repos/${repo}/tags?per_page=1`, {
         signal: controller.signal,
-        headers: { 'User-Agent': 'YumaPlayer-PC/1.0.0' }
+        headers: { 'User-Agent': 'YumaPlayer-PC/1.1.0' }
       });
       if (!tagsRes.ok) return null;
       const tags = await tagsRes.json();
@@ -42,16 +43,25 @@ async function fetchLatestGithubRelease(repo) {
         name: tags[0].name,
         url: `https://github.com/${repo}/releases`,
         publishedAt: null,
-        notes: ''
+        notes: '',
+        assets: []
       };
     }
     const data = await res.json();
+    const assets = Array.isArray(data.assets)
+      ? data.assets.map((a) => ({
+          name: a.name,
+          size: a.size,
+          downloadUrl: a.browser_download_url
+        }))
+      : [];
     return {
       tag: data.tag_name,
       name: data.name || data.tag_name,
       url: data.html_url,
       publishedAt: data.published_at,
-      notes: (data.body || '').slice(0, 600)
+      notes: (data.body || '').slice(0, 800),
+      assets
     };
   } catch {
     return null;
@@ -64,6 +74,7 @@ class UpdateManager {
   constructor(getWindow) {
     this.getWindow = getWindow;
     this.autoUpdater = null;
+    this.downloadedInstallerPath = null;
     this.status = {
       state: 'idle',
       currentVersion: app.getVersion(),
@@ -93,7 +104,7 @@ class UpdateManager {
         this._emit({
           state: 'available',
           availableVersion: info.version,
-          message: `Update v${info.version} is available!`
+          message: `Update v${info.version} is available! Ready for in-app download.`
         });
       });
 
@@ -105,10 +116,11 @@ class UpdateManager {
       });
 
       this.autoUpdater.on('download-progress', (prog) => {
+        const pct = Math.round(prog.percent || 0);
         this._emit({
           state: 'downloading',
-          progress: Math.round(prog.percent || 0),
-          message: `Downloading update: ${Math.round(prog.percent || 0)}%`
+          progress: pct,
+          message: `Downloading update in-app: ${pct}%`
         });
       });
 
@@ -117,14 +129,15 @@ class UpdateManager {
           state: 'downloaded',
           availableVersion: info.version,
           progress: 100,
-          message: `v${info.version} ready! Restart to install.`
+          message: `v${info.version} ready! Click Restart & Install.`
         });
       });
 
       this.autoUpdater.on('error', (err) => {
+        // Keep availableVersion if pcRelease has it so fallback in-app downloader still works
         this._emit({
-          state: 'error',
-          message: `Update check failed: ${err?.message || 'Unknown error'}`
+          state: this.status.availableVersion ? 'available' : 'error',
+          message: err?.message || 'Update check error'
         });
       });
     } catch (err) {
@@ -145,52 +158,119 @@ class UpdateManager {
       fetchLatestGithubRelease(PC_REPO)
     ]);
 
-    if (this.autoUpdater && app.isPackaged) {
-      this._emit({ upstream, pcRelease });
+    const hasNewer = Boolean(pcRelease && compareSemver(pcRelease.tag, this.status.currentVersion) > 0);
+
+    if (this.autoUpdater && app.isPackaged && !process.env.PORTABLE_EXECUTABLE_DIR) {
+      this._emit({
+        upstream,
+        pcRelease,
+        ...(hasNewer ? { availableVersion: normalizeVersion(pcRelease.tag) } : {})
+      });
       try {
         await this.autoUpdater.checkForUpdates();
-      } catch (err) {
-        this._emit({ state: 'error', message: err.message });
+        return this.status;
+      } catch {
+        // Fall through to direct GitHub asset check
       }
-      return this.status;
     }
 
-    // Unpackaged / GitHub API fallback check
-    if (pcRelease && compareSemver(pcRelease.tag, this.status.currentVersion) > 0) {
+    if (hasNewer) {
       this._emit({
         state: 'available',
         availableVersion: normalizeVersion(pcRelease.tag),
         upstream,
         pcRelease,
-        message: `New release ${pcRelease.tag} available on GitHub!`
+        message: `Update ${pcRelease.tag} available! Click Download Update to install in-app.`
       });
     } else {
       this._emit({
         state: 'up-to-date',
         upstream,
         pcRelease,
-        message: pcRelease
-          ? `Up to date (v${this.status.currentVersion})`
-          : `Running v${this.status.currentVersion} (publish to GitHub to enable OTA .exe updates)`
+        message: `Up to date (v${this.status.currentVersion})`
       });
     }
     return this.status;
   }
 
   async downloadUpdate() {
-    if (this.autoUpdater && app.isPackaged) {
-      await this.autoUpdater.downloadUpdate();
-      return { started: true };
+    this.downloadedInstallerPath = null;
+
+    // 1. Prefer native electron-updater OTA for NSIS installs
+    if (this.autoUpdater && app.isPackaged && !process.env.PORTABLE_EXECUTABLE_DIR) {
+      try {
+        await this.autoUpdater.downloadUpdate();
+        return { started: true, mode: 'ota' };
+      } catch {
+        // Fallback to direct in-app installer download below
+      }
     }
-    return {
-      started: false,
-      url: this.status.pcRelease?.url || `https://github.com/${PC_REPO}/releases`
-    };
+
+    // 2. Direct in-app download (for Portable / dev / fallback) without opening browser
+    const assets = this.status.pcRelease?.assets || [];
+    const setupAsset =
+      assets.find((a) => /setup.*\.exe$/i.test(a.name)) ||
+      assets.find((a) => /\.exe$/i.test(a.name));
+
+    if (!setupAsset) {
+      this._emit({ state: 'error', message: 'No Windows .exe asset found in release.' });
+      return { started: false };
+    }
+
+    const outPath = path.join(app.getPath('temp'), setupAsset.name);
+    this._emit({ state: 'downloading', progress: 0, message: `Downloading ${setupAsset.name}: 0%` });
+
+    const res = await fetch(setupAsset.downloadUrl, {
+      headers: { 'User-Agent': 'YumaPlayer-PC/1.1.0' }
+    });
+    if (!res.ok || !res.body) {
+      this._emit({ state: 'error', message: `Download failed (HTTP ${res.status})` });
+      return { started: false };
+    }
+
+    const total = Number(res.headers.get('content-length')) || setupAsset.size || 0;
+    let received = 0;
+    const fileStream = fs.createWriteStream(outPath);
+    const reader = res.body.getReader();
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        fileStream.write(Buffer.from(value));
+        received += value.byteLength;
+        if (total > 0) {
+          const pct = Math.min(99, Math.round((received / total) * 100));
+          this._emit({
+            state: 'downloading',
+            progress: pct,
+            message: `Downloading ${setupAsset.name}: ${pct}%`
+          });
+        }
+      }
+      await new Promise((resolve) => fileStream.end(resolve));
+      this.downloadedInstallerPath = outPath;
+      this._emit({
+        state: 'downloaded',
+        progress: 100,
+        message: `${setupAsset.name} downloaded! Click Restart & Install.`
+      });
+      return { started: true, mode: 'installer' };
+    } catch (err) {
+      fileStream.destroy();
+      this._emit({ state: 'error', message: `Download error: ${err.message}` });
+      return { started: false };
+    }
   }
 
-  quitAndInstall() {
+  async quitAndInstall() {
+    if (this.downloadedInstallerPath && fs.existsSync(this.downloadedInstallerPath)) {
+      await shell.openPath(this.downloadedInstallerPath);
+      app.quit();
+      return;
+    }
     if (this.autoUpdater && app.isPackaged) {
-      this.autoUpdater.quitAndInstall();
+      this.autoUpdater.quitAndInstall(false, true);
     }
   }
 }

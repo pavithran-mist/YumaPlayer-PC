@@ -30,6 +30,7 @@
       this.crossfadeSeconds = 4;
       this.bassSwap = true;
       this.volume = 0.85;
+      this.playbackRate = 1.0;
       this.preampDb = 0;
       this.eqBands = [...EQ_PRESETS.Flat];
       this.crossfadeTimer = null;
@@ -171,6 +172,7 @@
         this.crossfadeTriggeredForTrack = false;
         nextDeck.gain.gain.value = 1;
         nextDeck.bassFilter.gain.value = 0;
+        nextDeck.audio.playbackRate = this.playbackRate;
         nextDeck.audio.src = url;
         await nextDeck.audio.play();
         return;
@@ -183,6 +185,7 @@
 
       nextDeck.gain.gain.value = 0;
       nextDeck.bassFilter.gain.value = this.bassSwap ? -14 : 0;
+      nextDeck.audio.playbackRate = this.playbackRate;
       nextDeck.audio.src = url;
       await nextDeck.audio.play();
 
@@ -250,6 +253,13 @@
       if (this.masterGain) {
         this.masterGain.gain.value = this.volume;
       }
+    }
+
+    setPlaybackRate(rate) {
+      this.playbackRate = Math.max(0.5, Math.min(2, Number(rate) || 1));
+      this.decks.forEach((d) => {
+        d.audio.playbackRate = this.playbackRate;
+      });
     }
 
     setCrossfade(seconds, bassSwap) {

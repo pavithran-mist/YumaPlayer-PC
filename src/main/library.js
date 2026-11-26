@@ -11,8 +11,13 @@ const AUDIO_EXTENSIONS = new Set([
   '.ogg',
   '.opus',
   '.alac',
-  '.webm'
+  '.webm',
+  '.mp4',
+  '.mkv',
+  '.mov'
 ]);
+
+const VIDEO_EXTENSIONS = new Set(['.mp4', '.mkv', '.mov', '.webm']);
 
 const MIME_TYPES = {
   '.flac': 'audio/flac',
@@ -23,7 +28,10 @@ const MIME_TYPES = {
   '.ogg': 'audio/ogg',
   '.opus': 'audio/opus',
   '.alac': 'audio/mp4',
-  '.webm': 'audio/webm'
+  '.webm': 'video/webm',
+  '.mp4': 'video/mp4',
+  '.mkv': 'video/x-matroska',
+  '.mov': 'video/quicktime'
 };
 
 function isSupportedAudioFile(filePath) {
@@ -93,6 +101,7 @@ async function parseAudioFile(filePath, mmModule = null) {
   return {
     id: makeTrackId(filePath),
     source: 'local',
+    mediaType: VIDEO_EXTENSIONS.has('.' + ext.toLowerCase()) ? 'video' : 'audio',
     title,
     artist,
     album,

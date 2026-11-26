@@ -1,12 +1,11 @@
-const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, globalShortcut } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
-const { Readable } = require('stream');
 
 const { JsonStore } = require('./store');
 const { isSupportedAudioFile, getMimeType, scanLocalFolders, parseAudioFile } = require('./library');
-const { searchMusic, getHomeDiscovery, resolveAudioStream } = require('./youtubeService');
+const { searchMusic, getHomeDiscovery } = require('./youtubeService');
 const { fetchLyrics } = require('./lyricsService');
 const { fetchSponsorSegments } = require('./sponsorBlock');
 const { UpdateManager } = require('./updater');
@@ -38,7 +37,7 @@ function createStreamServer() {
           const filePath = reqUrl.searchParams.get('path');
           if (!filePath || !fs.existsSync(filePath) || !isSupportedAudioFile(filePath)) {
             res.writeHead(404);
-            res.end('Audio file not found');
+            res.end('Media file not found');
             return;
           }
 
@@ -74,56 +73,12 @@ function createStreamServer() {
           return;
         }
 
-        if (reqUrl.pathname === '/stream') {
-          const videoId = reqUrl.searchParams.get('id');
-          if (!videoId) {
-            res.writeHead(400);
-            res.end('Missing video id');
-            return;
-          }
-
-          const info = await resolveAudioStream(videoId);
-          const upstreamHeaders = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-          };
-          if (req.headers.range) {
-            upstreamHeaders.Range = req.headers.range;
-          }
-
-          const upstream = await fetch(info.url, { headers: upstreamHeaders });
-          const outHeaders = {
-            'Content-Type': upstream.headers.get('content-type') || info.mimeType,
-            'Accept-Ranges': upstream.headers.get('accept-ranges') || 'bytes'
-          };
-          const contentLength = upstream.headers.get('content-length');
-          const contentRange = upstream.headers.get('content-range');
-          if (contentLength) outHeaders['Content-Length'] = contentLength;
-          if (contentRange) outHeaders['Content-Range'] = contentRange;
-
-          res.writeHead(upstream.status, outHeaders);
-          if (upstream.body) {
-            const nodeStream = Readable.fromWeb(upstream.body);
-            nodeStream.on('error', () => {
-              if (!res.writableEnded) res.end();
-            });
-            req.on('close', () => nodeStream.destroy());
-            nodeStream.pipe(res);
-          } else {
-            res.end();
-          }
-          return;
-        }
-
         res.writeHead(404);
         res.end('Not found');
       } catch (err) {
-        console.error('Stream proxy error:', err.message);
-        if (!res.headersSent) {
-          res.writeHead(500);
-        }
-        if (!res.writableEnded) {
-          res.end('Stream error');
-        }
+        console.error('Stream server error:', err.message);
+        if (!res.headersSent) res.writeHead(500);
+        if (!res.writableEnded) res.end('Stream error');
       }
     });
 
@@ -137,12 +92,13 @@ function createStreamServer() {
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 820,
-    minWidth: 1000,
-    minHeight: 680,
+    width: 1360,
+    height: 860,
+    minWidth: 1060,
+    minHeight: 700,
     frame: false,
     backgroundColor: '#090b12',
+    icon: path.join(__dirname, '..', '..', 'build', 'icon.ico'),
     title: 'YumaPlayer PC',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -163,6 +119,22 @@ function createWindow() {
     ytmPlayer?.destroy();
     mainWindow = null;
   });
+}
+
+function registerMediaKeys() {
+  try {
+    globalShortcut.register('MediaPlayPause', () => {
+      mainWindow?.webContents.send('media:command', 'toggle');
+    });
+    globalShortcut.register('MediaNextTrack', () => {
+      mainWindow?.webContents.send('media:command', 'next');
+    });
+    globalShortcut.register('MediaPreviousTrack', () => {
+      mainWindow?.webContents.send('media:command', 'prev');
+    });
+  } catch {
+    // ignore if another app holds media keys
+  }
 }
 
 function registerIpc() {
@@ -199,10 +171,10 @@ function registerIpc() {
   );
   ipcMain.handle('store:updateSettings', (_e, partial) => store.updateSettings(partial));
 
-  // Local Library
+  // Local Library (Audio & Video Songs)
   ipcMain.handle('library:pickFolder', async () => {
     const res = await dialog.showOpenDialog(mainWindow, {
-      title: 'Select Music Folder (FLAC, MP3, WAV, M4A, OGG)',
+      title: 'Select Music or Video Folder',
       properties: ['openDirectory']
     });
     if (res.canceled || res.filePaths.length === 0) {
@@ -215,12 +187,12 @@ function registerIpc() {
 
   ipcMain.handle('library:pickFiles', async () => {
     const res = await dialog.showOpenDialog(mainWindow, {
-      title: 'Open Audio Files',
+      title: 'Open Audio or Video Files',
       properties: ['openFile', 'multiSelections'],
       filters: [
         {
-          name: 'Audio Files',
-          extensions: ['flac', 'mp3', 'wav', 'm4a', 'aac', 'ogg', 'opus', 'alac']
+          name: 'Audio & Video Files',
+          extensions: ['flac', 'mp3', 'wav', 'm4a', 'aac', 'ogg', 'opus', 'alac', 'mp4', 'mkv', 'mov', 'webm']
         }
       ]
     });
@@ -250,19 +222,27 @@ function registerIpc() {
     return { folders, tracks };
   });
 
-  // Streaming, Lyrics & SponsorBlock
-  ipcMain.handle('yt:search', (_e, query) => searchMusic(query));
+  // Streaming, Search, Lyrics & SponsorBlock
+  ipcMain.handle('yt:search', (_e, payload) => {
+    if (typeof payload === 'string') return searchMusic(payload, 'all');
+    return searchMusic(payload?.query, payload?.mode || 'all');
+  });
   ipcMain.handle('yt:home', () => getHomeDiscovery());
   ipcMain.handle('lyrics:get', (_e, track) => fetchLyrics(track));
   ipcMain.handle('sponsor:get', (_e, videoId) => fetchSponsorSegments(videoId));
 
-  // Embedded YouTube Music Player
-  ipcMain.handle('ytm:play', (_e, videoId) => ytmPlayer.play(videoId));
+  // Embedded YouTube Music & Video Player (WebContentsView)
+  ipcMain.handle('ytm:play', (_e, payload) => {
+    if (typeof payload === 'string') return ytmPlayer.play(payload);
+    return ytmPlayer.play(payload?.videoId, { preferVideo: Boolean(payload?.preferVideo) });
+  });
   ipcMain.handle('ytm:pause', () => ytmPlayer.pause());
   ipcMain.handle('ytm:resume', () => ytmPlayer.resume());
   ipcMain.handle('ytm:stop', () => ytmPlayer.stop());
   ipcMain.handle('ytm:seek', (_e, seconds) => ytmPlayer.seek(seconds));
   ipcMain.handle('ytm:volume', (_e, volume) => ytmPlayer.setVolume(volume));
+  ipcMain.handle('ytm:rate', (_e, rate) => ytmPlayer.setPlaybackRate(rate));
+  ipcMain.handle('ytm:setStage', (_e, { visible, bounds }) => ytmPlayer.setVideoStage(visible, bounds));
 
   // Updates & External Links
   ipcMain.handle('updater:check', () => updateManager.checkForUpdates());
@@ -281,20 +261,28 @@ app.whenReady().then(async () => {
   store = new JsonStore(storePath);
   updateManager = new UpdateManager(() => mainWindow);
   updateManager.init();
-  ytmPlayer = new YtmPlayer((ytState) => {
-    mainWindow?.webContents.send('ytm:state', ytState);
-  });
+  ytmPlayer = new YtmPlayer(
+    () => mainWindow,
+    (ytState) => {
+      mainWindow?.webContents.send('ytm:state', ytState);
+    }
+  );
   await createStreamServer();
   registerIpc();
   createWindow();
+  registerMediaKeys();
 
   setTimeout(() => {
     updateManager?.checkForUpdates();
-  }, 4000);
+  }, 3500);
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
+});
+
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll();
 });
 
 app.on('window-all-closed', () => {

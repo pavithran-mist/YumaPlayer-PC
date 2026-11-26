@@ -1,58 +1,118 @@
-const { BrowserWindow } = require('electron');
+const { WebContentsView } = require('electron');
 
 class YtmPlayer {
-  constructor(onState) {
+  constructor(getMainWindow, onState) {
+    this.getMainWindow = getMainWindow;
     this.onState = onState;
-    this.win = null;
+    this.view = null;
     this.pollTimer = null;
     this.currentVideoId = null;
     this.volume = 0.85;
+    this.playbackRate = 1.0;
     this.lastEndedSentFor = null;
+    this.videoVisible = false;
+    this.bounds = { x: 0, y: 0, width: 0, height: 0 };
   }
 
-  _ensureWindow() {
-    if (this.win && !this.win.isDestroyed()) return this.win;
-    this.win = new BrowserWindow({
-      show: false,
-      width: 640,
-      height: 360,
+  _ensureView() {
+    if (this.view && !this.view.webContents.isDestroyed()) return this.view;
+    const mainWin = this.getMainWindow();
+    if (!mainWin || mainWin.isDestroyed()) return null;
+
+    this.view = new WebContentsView({
       webPreferences: {
         contextIsolation: true,
         nodeIntegration: false,
         backgroundThrottling: false
       }
     });
-    this.win.on('closed', () => {
-      this.stopPolling();
-      this.win = null;
+    mainWin.contentView.addChildView(this.view);
+    this._applyBounds();
+
+    this.view.webContents.on('did-finish-load', () => {
+      this._injectCleanVideoCss();
     });
-    return this.win;
+
+    return this.view;
   }
 
-  async play(videoId) {
+  _injectCleanVideoCss() {
+    if (!this.view || this.view.webContents.isDestroyed()) return;
+    this.view.webContents
+      .insertCSS(`
+        html, body { background: #000 !important; overflow: hidden !important; margin: 0 !important; }
+        ytmusic-nav-bar, ytmusic-player-bar, ytmusic-guide-renderer,
+        #masthead-container, #secondary, #below, #comments,
+        .ytp-chrome-top, .ytp-watermark, ytmusic-player-page #side-panel {
+          display: none !important;
+        }
+        #player, ytmusic-player, #movie_player, .html5-video-container, video.html5-main-video {
+          position: fixed !important;
+          inset: 0 !important;
+          width: 100vw !important;
+          height: 100vh !important;
+          max-width: 100vw !important;
+          max-height: 100vh !important;
+          object-fit: contain !important;
+          z-index: 9999 !important;
+          background: #000 !important;
+        }
+      `)
+      .catch(() => {});
+  }
+
+  _applyBounds() {
+    if (!this.view || this.view.webContents.isDestroyed()) return;
+    if (this.videoVisible && this.bounds.width > 20 && this.bounds.height > 20) {
+      this.view.setBounds({
+        x: Math.round(this.bounds.x),
+        y: Math.round(this.bounds.y),
+        width: Math.round(this.bounds.width),
+        height: Math.round(this.bounds.height)
+      });
+    } else {
+      // Keep tiny offscreen bounds when in audio-only mode so Chromium keeps streaming smoothly
+      this.view.setBounds({ x: -2000, y: -2000, width: 320, height: 180 });
+    }
+  }
+
+  setVideoStage(visible, bounds = null) {
+    this.videoVisible = Boolean(visible);
+    if (bounds && typeof bounds.width === 'number') {
+      this.bounds = bounds;
+    }
+    this._applyBounds();
+  }
+
+  async play(videoId, { preferVideo = false } = {}) {
     if (!videoId) throw new Error('Missing videoId');
     this.currentVideoId = videoId;
     this.lastEndedSentFor = null;
 
-    const win = this._ensureWindow();
+    const view = this._ensureView();
+    if (!view) return;
     this.stopPolling();
 
-    const targetUrl = `https://music.youtube.com/watch?v=${encodeURIComponent(videoId)}`;
-    await win.loadURL(targetUrl);
+    const base = preferVideo
+      ? `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`
+      : `https://music.youtube.com/watch?v=${encodeURIComponent(videoId)}`;
+
+    await view.webContents.loadURL(base);
     await this.setVolume(this.volume);
+    await this.setPlaybackRate(this.playbackRate);
     this._startPolling(videoId);
   }
 
   async pause() {
-    if (!this.win || this.win.isDestroyed()) return;
-    await this.win.webContents
+    if (!this.view || this.view.webContents.isDestroyed()) return;
+    await this.view.webContents
       .executeJavaScript(`(() => { const v = document.querySelector('video'); if (v) v.pause(); })()`)
       .catch(() => {});
   }
 
   async resume() {
-    if (!this.win || this.win.isDestroyed()) return;
-    await this.win.webContents
+    if (!this.view || this.view.webContents.isDestroyed()) return;
+    await this.view.webContents
       .executeJavaScript(`(() => { const v = document.querySelector('video'); if (v) v.play(); })()`)
       .catch(() => {});
   }
@@ -60,16 +120,17 @@ class YtmPlayer {
   async stop() {
     this.stopPolling();
     this.currentVideoId = null;
-    if (this.win && !this.win.isDestroyed()) {
+    this.setVideoStage(false);
+    if (this.view && !this.view.webContents.isDestroyed()) {
       await this.pause();
-      await this.win.loadURL('about:blank').catch(() => {});
+      await this.view.webContents.loadURL('about:blank').catch(() => {});
     }
   }
 
   async seek(seconds) {
-    if (!this.win || this.win.isDestroyed()) return;
+    if (!this.view || this.view.webContents.isDestroyed()) return;
     const sec = Math.max(0, Number(seconds) || 0);
-    await this.win.webContents
+    await this.view.webContents
       .executeJavaScript(
         `(() => { const v = document.querySelector('video'); if (v && Number.isFinite(v.duration)) v.currentTime = ${sec}; })()`
       )
@@ -78,21 +139,29 @@ class YtmPlayer {
 
   async setVolume(vol) {
     this.volume = Math.max(0, Math.min(1, Number(vol) || 0));
-    if (!this.win || this.win.isDestroyed()) return;
-    await this.win.webContents
+    if (!this.view || this.view.webContents.isDestroyed()) return;
+    await this.view.webContents
       .executeJavaScript(`(() => { const v = document.querySelector('video'); if (v) v.volume = ${this.volume}; })()`)
+      .catch(() => {});
+  }
+
+  async setPlaybackRate(rate) {
+    this.playbackRate = Math.max(0.5, Math.min(2, Number(rate) || 1));
+    if (!this.view || this.view.webContents.isDestroyed()) return;
+    await this.view.webContents
+      .executeJavaScript(`(() => { const v = document.querySelector('video'); if (v) v.playbackRate = ${this.playbackRate}; })()`)
       .catch(() => {});
   }
 
   _startPolling(videoId) {
     this.stopPolling();
     this.pollTimer = setInterval(async () => {
-      if (!this.win || this.win.isDestroyed() || this.currentVideoId !== videoId) {
+      if (!this.view || this.view.webContents.isDestroyed() || this.currentVideoId !== videoId) {
         this.stopPolling();
         return;
       }
       try {
-        const state = await this.win.webContents.executeJavaScript(`(() => {
+        const state = await this.view.webContents.executeJavaScript(`(() => {
           const player = document.querySelector('#movie_player');
           const isAd = player && player.classList.contains('ad-showing');
           const v = document.querySelector('video');
@@ -104,8 +173,8 @@ class YtmPlayer {
             return { isAd: true, currentTime: 0, duration: 0, paused: false, ended: false };
           }
           if (v.muted) v.muted = false;
-          if (v.volume !== ${this.volume}) v.volume = ${this.volume};
-          // Prevent YouTube Music's own queue from auto-playing a different track on end
+          if (Math.abs(v.volume - ${this.volume}) > 0.01) v.volume = ${this.volume};
+          if (Math.abs(v.playbackRate - ${this.playbackRate}) > 0.01) v.playbackRate = ${this.playbackRate};
           if (v.ended) v.pause();
           return {
             isAd: false,
@@ -125,7 +194,7 @@ class YtmPlayer {
       } catch {
         // page navigating
       }
-    }, 300);
+    }, 280);
   }
 
   stopPolling() {
@@ -137,10 +206,18 @@ class YtmPlayer {
 
   destroy() {
     this.stopPolling();
-    if (this.win && !this.win.isDestroyed()) {
-      this.win.destroy();
+    try {
+      const mainWin = this.getMainWindow();
+      if (this.view && mainWin && !mainWin.isDestroyed()) {
+        mainWin.contentView.removeChildView(this.view);
+      }
+      if (this.view && !this.view.webContents.isDestroyed()) {
+        this.view.webContents.close();
+      }
+    } catch {
+      // ignore teardown errors
     }
-    this.win = null;
+    this.view = null;
   }
 }
 

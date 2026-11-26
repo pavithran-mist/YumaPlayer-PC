@@ -39,27 +39,34 @@ test('JsonStore persists likes, playlists, folders, and settings', () => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test('Local library scanner detects supported audio files and sidecar LRC', async () => {
+test('Local library scanner detects supported audio & video files and sidecar LRC', async () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'yuma-lib-'));
   const flacFile = path.join(tmpDir, 'Track One.flac');
+  const mp4File = path.join(tmpDir, 'Video Song.mp4');
   const lrcFile = path.join(tmpDir, 'Track One.lrc');
   const txtFile = path.join(tmpDir, 'notes.txt');
 
   fs.writeFileSync(flacFile, Buffer.from('fLaCdummy'));
+  fs.writeFileSync(mp4File, Buffer.from('mp4dummy'));
   fs.writeFileSync(lrcFile, '[00:01.00] Hello world');
   fs.writeFileSync(txtFile, 'ignore me');
 
   assert.equal(isSupportedAudioFile(flacFile), true);
+  assert.equal(isSupportedAudioFile(mp4File), true);
   assert.equal(isSupportedAudioFile(txtFile), false);
   assert.equal(getMimeType(flacFile), 'audio/flac');
+  assert.equal(getMimeType(mp4File), 'video/mp4');
 
   const files = walkAudioFiles(tmpDir);
-  assert.deepEqual(files, [flacFile]);
+  assert.equal(files.length, 2);
 
   const tracks = await scanLocalFolders([tmpDir]);
-  assert.equal(tracks.length, 1);
-  assert.equal(tracks[0].lossless, true);
-  assert.equal(tracks[0].title, 'Track One');
+  assert.equal(tracks.length, 2);
+  const flacTrack = tracks.find((t) => t.title === 'Track One');
+  const mp4Track = tracks.find((t) => t.title === 'Video Song');
+  assert.equal(flacTrack.lossless, true);
+  assert.equal(flacTrack.mediaType, 'audio');
+  assert.equal(mp4Track.mediaType, 'video');
   assert.equal(findSidecarLrc(flacFile), '[00:01.00] Hello world');
 
   fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -115,6 +122,11 @@ test('YouTube Music normalizer parses song items cleanly', () => {
   assert.equal(track.id, 'yt_dQw4w9WgXcQ');
   assert.equal(track.artist, 'Artist A, Artist B');
   assert.equal(track.duration, 212);
+  assert.equal(track.mediaType, 'audio');
+
+  const videoTrack = normalizeYtmSong({ id: 'vid123', title: 'MV' }, 'video');
+  assert.equal(videoTrack.mediaType, 'video');
+  assert.equal(videoTrack.codec, 'VIDEO');
 });
 
 test('Updater semver comparison handles v-prefixes and release tags', () => {

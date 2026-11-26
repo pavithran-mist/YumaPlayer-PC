@@ -32,21 +32,25 @@ contextBridge.exposeInMainWorld('yumaAPI', {
   },
 
   music: {
-    search: (query) => ipcRenderer.invoke('yt:search', query),
+    search: (query, mode = 'all') => ipcRenderer.invoke('yt:search', { query, mode }),
     getHome: () => ipcRenderer.invoke('yt:home'),
     getLyrics: (track) => ipcRenderer.invoke('lyrics:get', track),
     getSponsorSegments: (videoId) => ipcRenderer.invoke('sponsor:get', videoId)
   },
 
   ytmPlayer: {
-    play: (videoId) => ipcRenderer.invoke('ytm:play', videoId),
+    play: (videoId, preferVideo = false) => ipcRenderer.invoke('ytm:play', { videoId, preferVideo }),
     pause: () => ipcRenderer.invoke('ytm:pause'),
     resume: () => ipcRenderer.invoke('ytm:resume'),
     stop: () => ipcRenderer.invoke('ytm:stop'),
     seek: (seconds) => ipcRenderer.invoke('ytm:seek', seconds),
     setVolume: (volume) => ipcRenderer.invoke('ytm:volume', volume),
+    setPlaybackRate: (rate) => ipcRenderer.invoke('ytm:rate', rate),
+    setStage: (visible, bounds) => ipcRenderer.invoke('ytm:setStage', { visible, bounds }),
     onState: (cb) => ipcRenderer.on('ytm:state', (_e, st) => cb(st))
   },
+
+  onMediaCommand: (cb) => ipcRenderer.on('media:command', (_e, cmd) => cb(cmd)),
 
   updater: {
     check: () => ipcRenderer.invoke('updater:check'),

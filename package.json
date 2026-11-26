@@ -1,7 +1,7 @@
 {
   "name": "yumaplayer-pc",
-  "version": "1.0.2",
-  "description": "YumaPlayer PC - Hybrid YouTube Music, Lossless Local Audio & Glassmorphism Desktop Player",
+  "version": "1.1.0",
+  "description": "YumaPlayer PC - Spotify-Inspired Glassmorphism Music & Video Player with Hi-Res Local FLAC, YouTube Music, Synced Lyrics & OTA Updates",
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
@@ -11,9 +11,11 @@
   },
   "keywords": [
     "music-player",
+    "video-player",
     "youtube-music",
     "flac",
     "electron",
+    "spotify-ui",
     "glassmorphism"
   ],
   "author": "pavithran-mist",
@@ -43,24 +45,24 @@
       "target": [
         {
           "target": "nsis",
-          "arch": [
-            "x64"
-          ]
+          "arch": ["x64"]
         },
         {
           "target": "portable",
-          "arch": [
-            "x64"
-          ]
+          "arch": ["x64"]
         }
       ],
       "icon": "build/icon.ico"
     },
     "nsis": {
+      "artifactName": "YumaPlayer-PC-Setup-${version}.${ext}",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
+    },
+    "portable": {
+      "artifactName": "YumaPlayer-PC-Portable-${version}.${ext}"
     },
     "publish": [
       {
