@@ -35,6 +35,8 @@ contextBridge.exposeInMainWorld('yumaAPI', {
   music: {
     search: (query, mode = 'all') => ipcRenderer.invoke('yt:search', { query, mode }),
     getHome: () => ipcRenderer.invoke('yt:home'),
+    getUpNext: (videoId, fallbackQuery = '') =>
+      ipcRenderer.invoke('yt:upNext', { videoId, fallbackQuery }),
     getLyrics: (track) => ipcRenderer.invoke('lyrics:get', track),
     getSponsorSegments: (videoId) => ipcRenderer.invoke('sponsor:get', videoId)
   },

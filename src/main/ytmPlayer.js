@@ -7,6 +7,7 @@ class YtmPlayer {
     this.view = null;
     this.pollTimer = null;
     this.currentVideoId = null;
+    this.isLoadingTrack = false;
     this.volume = 0.85;
     this.playbackRate = 1.0;
     this.lastEndedSentFor = null;
@@ -31,6 +32,31 @@ class YtmPlayer {
 
     this.view.webContents.on('did-finish-load', () => {
       this._injectCleanVideoCss();
+    });
+
+    // Catch YouTube / YouTube Music auto-advancing its own queue via SPA navigation
+    this.view.webContents.on('did-navigate-in-page', (_e, newUrl) => {
+      if (this.isLoadingTrack || !this.currentVideoId) return;
+      try {
+        const parsed = new URL(newUrl);
+        const navId = parsed.searchParams.get('v');
+        if (navId && navId !== this.currentVideoId && this.lastEndedSentFor !== this.currentVideoId) {
+          const finishedId = this.currentVideoId;
+          this.lastEndedSentFor = finishedId;
+          this.stopPolling();
+          this.pause();
+          this.onState?.({
+            videoId: finishedId,
+            isAd: false,
+            currentTime: 0,
+            duration: 0,
+            paused: true,
+            ended: true
+          });
+        }
+      } catch {
+        // ignore invalid URL
+      }
     });
 
     return this.view;
@@ -71,7 +97,6 @@ class YtmPlayer {
         height: Math.round(this.bounds.height)
       });
     } else {
-      // Keep tiny offscreen bounds when in audio-only mode so Chromium keeps streaming smoothly
       this.view.setBounds({ x: -2000, y: -2000, width: 320, height: 180 });
     }
   }
@@ -88,16 +113,26 @@ class YtmPlayer {
     if (!videoId) throw new Error('Missing videoId');
     this.currentVideoId = videoId;
     this.lastEndedSentFor = null;
+    this.isLoadingTrack = true;
 
     const view = this._ensureView();
-    if (!view) return;
+    if (!view) {
+      this.isLoadingTrack = false;
+      return;
+    }
     this.stopPolling();
 
     const base = preferVideo
       ? `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`
       : `https://music.youtube.com/watch?v=${encodeURIComponent(videoId)}`;
 
-    await view.webContents.loadURL(base);
+    try {
+      await view.webContents.loadURL(base);
+    } finally {
+      this.isLoadingTrack = false;
+    }
+
+    if (this.currentVideoId !== videoId) return;
     await this.setVolume(this.volume);
     await this.setPlaybackRate(this.playbackRate);
     this._startPolling(videoId);
@@ -120,6 +155,7 @@ class YtmPlayer {
   async stop() {
     this.stopPolling();
     this.currentVideoId = null;
+    this.isLoadingTrack = false;
     this.setVideoStage(false);
     if (this.view && !this.view.webContents.isDestroyed()) {
       await this.pause();
@@ -155,6 +191,7 @@ class YtmPlayer {
 
   _startPolling(videoId) {
     this.stopPolling();
+    const safeId = JSON.stringify(videoId);
     this.pollTimer = setInterval(async () => {
       if (!this.view || this.view.webContents.isDestroyed() || this.currentVideoId !== videoId) {
         this.stopPolling();
@@ -162,39 +199,77 @@ class YtmPlayer {
       }
       try {
         const state = await this.view.webContents.executeJavaScript(`(() => {
+          const expectedId = ${safeId};
+          const pageV = new URLSearchParams(location.search).get('v');
+          const v = document.querySelector('video');
+
+          // Disable YouTube Music's own autoplay toggle if present
+          const autoplayToggle = document.querySelector('tp-yt-paper-toggle-button.autoplay[checked], .ytp-autonav-toggle-button[aria-checked="true"]');
+          if (autoplayToggle) autoplayToggle.click();
+
+          if (pageV && pageV !== expectedId) {
+            if (v) v.pause();
+            return { isAd: false, currentTime: 0, duration: 0, paused: true, ended: true };
+          }
+
           const player = document.querySelector('#movie_player');
           const isAd = player && player.classList.contains('ad-showing');
-          const v = document.querySelector('video');
           if (!v) return null;
+
+          if (!v.__yumaHookedFor || v.__yumaHookedFor !== expectedId) {
+            v.__yumaHookedFor = expectedId;
+            window.__yumaEndedForId = null;
+            v.addEventListener('ended', () => {
+              window.__yumaEndedForId = expectedId;
+              v.pause();
+            });
+          }
+
           if (isAd) {
             v.muted = true;
             const skipBtn = document.querySelector('.ytp-skip-ad-button, .ytp-ad-skip-button');
             if (skipBtn) skipBtn.click();
             return { isAd: true, currentTime: 0, duration: 0, paused: false, ended: false };
           }
+
           if (v.muted) v.muted = false;
           if (Math.abs(v.volume - ${this.volume}) > 0.01) v.volume = ${this.volume};
           if (Math.abs(v.playbackRate - ${this.playbackRate}) > 0.01) v.playbackRate = ${this.playbackRate};
-          if (v.ended) v.pause();
+
+          const dur = Number.isFinite(v.duration) ? v.duration : 0;
+          const cur = v.currentTime || 0;
+          const hasEnded =
+            window.__yumaEndedForId === expectedId ||
+            v.ended ||
+            (dur > 5 && cur >= dur - 0.35);
+
+          if (hasEnded) {
+            v.pause();
+          }
+
           return {
             isAd: false,
-            currentTime: v.currentTime || 0,
-            duration: Number.isFinite(v.duration) ? v.duration : 0,
-            paused: v.paused,
-            ended: v.ended
+            currentTime: cur,
+            duration: dur,
+            paused: hasEnded ? true : v.paused,
+            ended: hasEnded
           };
         })()`);
 
-        if (!state) return;
-        this.onState?.({ videoId, ...state });
-        if (state.ended && this.lastEndedSentFor !== videoId) {
-          this.lastEndedSentFor = videoId;
-          this.stopPolling();
+        if (!state || this.currentVideoId !== videoId) return;
+        if (state.ended) {
+          if (this.lastEndedSentFor !== videoId) {
+            this.lastEndedSentFor = videoId;
+            this.stopPolling();
+            this.onState?.({ videoId, ...state });
+          }
+          return;
         }
+        this.onState?.({ videoId, ...state });
       } catch {
         // page navigating
       }
-    }, 280);
+    }, 250);
   }
 
   stopPolling() {

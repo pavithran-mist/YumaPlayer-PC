@@ -129,7 +129,7 @@
 
         <div class="sidebar-footer">
           <span>Created by <strong>Pavithran</strong></span>
-          <span id="sidebarVersion">v1.3.0</span>
+          <span id="sidebarVersion">v1.3.1</span>
         </div>
       </aside>
 
@@ -329,6 +329,17 @@
 
               <div class="control-row">
                 <div>
+                  <strong>Endless Queue (Autoplay)</strong>
+                  <p class="muted">Automatically adds similar tracks when your queue reaches the end</p>
+                </div>
+                <label class="switch">
+                  <input id="endlessQueueToggle" type="checkbox" checked />
+                  <span class="slider"></span>
+                </label>
+              </div>
+
+              <div class="control-row">
+                <div>
                   <strong>Dynamic artwork tint</strong>
                   <p class="muted">Subtly adapts the top wash to the current cover art</p>
                 </div>
@@ -458,7 +469,10 @@
         <div id="side-queue" class="side-content">
           <div class="queue-header">
             <span class="muted">Up Next</span>
-            <button id="clearQueueBtn" class="text-btn">Clear queue</button>
+            <div class="hero-actions">
+              <button id="endlessQueueBtn" class="chip-ctrl-btn active" title="Endless Queue Autoplay">∞ Endless</button>
+              <button id="clearQueueBtn" class="text-btn">Clear</button>
+            </div>
           </div>
           <div id="queueList" class="queue-list"></div>
         </div>

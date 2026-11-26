@@ -5,7 +5,7 @@ const http = require('http');
 
 const { JsonStore } = require('./store');
 const { isSupportedAudioFile, getMimeType, scanLocalFolders, parseAudioFile } = require('./library');
-const { searchMusic, getHomeDiscovery } = require('./youtubeService');
+const { searchMusic, getHomeDiscovery, getUpNextTracks } = require('./youtubeService');
 const { fetchLyrics } = require('./lyricsService');
 const { fetchSponsorSegments } = require('./sponsorBlock');
 const { UpdateManager } = require('./updater');
@@ -233,6 +233,9 @@ function registerIpc() {
     return searchMusic(payload?.query, payload?.mode || 'all');
   });
   ipcMain.handle('yt:home', () => getHomeDiscovery());
+  ipcMain.handle('yt:upNext', (_e, payload) =>
+    getUpNextTracks(payload?.videoId, payload?.fallbackQuery || '')
+  );
   ipcMain.handle('lyrics:get', (_e, track) => fetchLyrics(track));
   ipcMain.handle('sponsor:get', (_e, videoId) => fetchSponsorSegments(videoId));
 

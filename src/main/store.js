@@ -14,7 +14,8 @@ const DEFAULT_DATA = {
     eqBands: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     preampDb: 0,
     volume: 0.85,
-    ambientBackdrop: true
+    ambientBackdrop: true,
+    endlessQueue: true
   }
 };
 

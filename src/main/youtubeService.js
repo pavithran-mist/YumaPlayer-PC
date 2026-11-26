@@ -229,11 +229,51 @@ async function resolveAudioStream(videoId) {
   return entry;
 }
 
+async function getUpNextTracks(videoId, fallbackQuery = '') {
+  const yt = await getClient();
+  const tracks = [];
+  const seen = new Set(videoId ? [videoId] : []);
+
+  if (videoId) {
+    try {
+      const up = await yt.music.getUpNext(videoId);
+      for (const item of up?.contents || []) {
+        const track = normalizeYtmSong(item, 'audio');
+        if (track && !seen.has(track.videoId)) {
+          seen.add(track.videoId);
+          tracks.push(track);
+        }
+        if (tracks.length >= 20) break;
+      }
+    } catch (err) {
+      console.warn('getUpNext fallback:', err.message);
+    }
+  }
+
+  if (tracks.length === 0 && fallbackQuery) {
+    try {
+      const searched = await searchMusic(fallbackQuery, 'songs');
+      for (const t of searched) {
+        if (t && !seen.has(t.videoId)) {
+          seen.add(t.videoId);
+          tracks.push(t);
+        }
+        if (tracks.length >= 15) break;
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  return tracks;
+}
+
 module.exports = {
   parseDurationText,
   upgradeArtworkUrl,
   normalizeYtmSong,
   searchMusic,
   getHomeDiscovery,
+  getUpNextTracks,
   resolveAudioStream
 };

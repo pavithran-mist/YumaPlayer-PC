@@ -33,7 +33,9 @@
     pendingPlaylistTrack: null,
     currentView: 'discover',
     viewHistory: ['discover'],
-    viewHistoryIndex: 0
+    viewHistoryIndex: 0,
+    isRefillingQueue: false,
+    isAdvancing: false
   };
 
   let engine = null;
@@ -318,6 +320,40 @@
     }
 
     loadTrackExtras(track);
+    if (state.store?.settings?.endlessQueue !== false && state.queue.length - 1 - index <= 2) {
+      ensureEndlessQueue(track);
+    }
+  }
+
+  async function ensureEndlessQueue(seedTrack = state.currentTrack) {
+    if (state.isRefillingQueue || !seedTrack || state.store?.settings?.endlessQueue === false) return 0;
+    state.isRefillingQueue = true;
+    try {
+      const fallbackQuery = `${seedTrack.artist || ''} ${seedTrack.title || ''}`.trim();
+      const radio = await window.yumaAPI.music.getUpNext(seedTrack.videoId || null, fallbackQuery);
+      const existingIds = new Set(state.queue.map((t) => t.id));
+      const existingVidIds = new Set(state.queue.map((t) => t.videoId).filter(Boolean));
+      const fresh = (Array.isArray(radio) ? radio : []).filter(
+        (t) => t && !existingIds.has(t.id) && (!t.videoId || !existingVidIds.has(t.videoId))
+      );
+      if (fresh.length > 0) {
+        state.queue.push(...fresh.slice(0, 15));
+        renderQueue();
+        return fresh.length;
+      }
+      // Offline local fallback: queue unplayed local tracks
+      const localExtra = state.localTracks.filter((t) => !existingIds.has(t.id));
+      if (localExtra.length > 0) {
+        state.queue.push(...localExtra.slice(0, 10));
+        renderQueue();
+        return localExtra.length;
+      }
+      return 0;
+    } catch {
+      return 0;
+    } finally {
+      state.isRefillingQueue = false;
+    }
   }
 
   async function playTrackWithContext(track, trackList = [track], opts = {}) {
@@ -531,26 +567,40 @@
     }
   }
 
-  function nextTrack({ useCrossfade = false } = {}) {
-    if (!state.queue.length) return;
-    if (state.repeatMode === 'one') {
-      playTrackAtIndex(state.queueIndex, { useCrossfade });
-      return;
-    }
-    if (state.shuffle && state.queue.length > 1) {
-      let randIdx = state.queueIndex;
-      while (randIdx === state.queueIndex) {
-        randIdx = Math.floor(Math.random() * state.queue.length);
+  async function nextTrack({ useCrossfade = false } = {}) {
+    if (!state.queue.length || state.isAdvancing) return;
+    state.isAdvancing = true;
+    try {
+      if (state.repeatMode === 'one') {
+        await playTrackAtIndex(state.queueIndex, { useCrossfade });
+        return;
       }
-      playTrackAtIndex(randIdx, { useCrossfade });
-      return;
+      if (state.shuffle && state.queue.length > 1) {
+        let randIdx = state.queueIndex;
+        while (randIdx === state.queueIndex) {
+          randIdx = Math.floor(Math.random() * state.queue.length);
+        }
+        await playTrackAtIndex(randIdx, { useCrossfade });
+        return;
+      }
+      if (state.queueIndex + 1 >= state.queue.length) {
+        if (state.store?.settings?.endlessQueue !== false) {
+          const added = await ensureEndlessQueue(state.currentTrack);
+          if (added > 0) {
+            await playTrackAtIndex(state.queueIndex + 1, { useCrossfade });
+            return;
+          }
+        }
+        if (state.repeatMode === 'off') {
+          setPlayingUiState(false);
+          return;
+        }
+      }
+      const nextIdx = (state.queueIndex + 1) % state.queue.length;
+      await playTrackAtIndex(nextIdx, { useCrossfade });
+    } finally {
+      state.isAdvancing = false;
     }
-    if (state.queueIndex + 1 >= state.queue.length && state.repeatMode === 'off') {
-      setPlayingUiState(false);
-      return;
-    }
-    const nextIdx = (state.queueIndex + 1) % state.queue.length;
-    playTrackAtIndex(nextIdx, { useCrossfade });
   }
 
   function prevTrack() {
@@ -1390,6 +1440,21 @@
       await window.yumaAPI.store.updateSettings({ sponsorBlockEnabled: e.target.checked });
     });
 
+    const setEndless = async (enabled) => {
+      state.store.settings.endlessQueue = Boolean(enabled);
+      $('endlessQueueToggle').checked = Boolean(enabled);
+      $('endlessQueueBtn').classList.toggle('active', Boolean(enabled));
+      await window.yumaAPI.store.updateSettings({ endlessQueue: Boolean(enabled) });
+      if (enabled && state.currentTrack && state.queue.length - 1 - state.queueIndex <= 2) {
+        ensureEndlessQueue(state.currentTrack);
+      }
+      showToast(enabled ? 'Endless Queue On' : 'Endless Queue Off');
+    };
+    $('endlessQueueToggle').addEventListener('change', (e) => setEndless(e.target.checked));
+    $('endlessQueueBtn').addEventListener('click', () =>
+      setEndless(!(state.store?.settings?.endlessQueue !== false))
+    );
+
     $('ambientToggle').addEventListener('change', async (e) => {
       state.store.settings.ambientBackdrop = e.target.checked;
       updateAmbientFromArtwork(e.target.checked ? state.currentTrack?.artwork : null);
@@ -1502,6 +1567,9 @@
     $('crossfadeValue').textContent = `${s.crossfadeSeconds}s`;
     $('bassSwapToggle').checked = s.bassSwap;
     $('sponsorBlockToggle').checked = s.sponsorBlockEnabled;
+    const endlessOn = s.endlessQueue !== false;
+    $('endlessQueueToggle').checked = endlessOn;
+    $('endlessQueueBtn').classList.toggle('active', endlessOn);
     $('ambientToggle').checked = s.ambientBackdrop;
     $('eqPresetSelect').value = s.eqPreset || 'Flat';
     buildEqUI();
