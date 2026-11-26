@@ -61,8 +61,17 @@ jobs:
         with:
           gradle-version: '8.7'
 
+      - name: Generate CI Signing Keystore
+        run: |
+          keytool -genkeypair -v -keystore "$GITHUB_WORKSPACE/android-app/release.keystore" -alias yuma -keyalg RSA -keysize 2048 -validity 10000 -storepass yumaplayer123 -keypass yumaplayer123 -dname "CN=Pavithran, OU=YumaPlayer, O=Pavithran, C=IN"
+
       - name: Build Signed Android APK
         working-directory: android-app
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ github.workspace }}/android-app/release.keystore
+          ANDROID_STORE_PASSWORD: yumaplayer123
+          ANDROID_KEY_ALIAS: yuma
+          ANDROID_KEY_PASSWORD: yumaplayer123
         run: gradle assembleRelease --no-daemon
 
       - name: Prepare Versioned APK
