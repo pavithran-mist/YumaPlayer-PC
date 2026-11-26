@@ -138,7 +138,7 @@
         <section id="view-discover" class="view active">
           <div class="home-header">
             <div class="home-title-cluster">
-              <div class="mobile-brand-avatar mobile-only" aria-hidden="true">Y</div>
+              <button class="mobile-brand-avatar mobile-only avatar-trigger" title="Pavithran · App Menu" aria-label="Menu">Y</button>
               <h1 id="greetingHeading">Good evening</h1>
               <span class="mobile-only mobile-by-tag">by Pavithran</span>
             </div>
@@ -152,6 +152,7 @@
           </div>
 
           <div class="filter-chips">
+            <button class="mobile-brand-avatar mobile-only avatar-trigger mobile-chip-avatar" title="Menu">Y</button>
             <button class="filter-chip active" data-home-filter="all">All</button>
             <button class="filter-chip" data-home-filter="music">Music</button>
             <button class="filter-chip" data-home-filter="videos">Video Songs</button>
@@ -201,8 +202,12 @@
         <section id="view-search" class="view">
           <div class="section-header">
             <div class="search-head-cluster">
-              <div class="mobile-brand-avatar mobile-only" aria-hidden="true">Y</div>
+              <button class="mobile-brand-avatar mobile-only avatar-trigger" title="Menu">Y</button>
               <h2>Search</h2>
+            </div>
+            <div class="header-actions mobile-only">
+              <button class="icon-btn mobile-hdr-btn" id="searchEqBtn" title="Equalizer" data-icon="sliders"></button>
+              <button class="icon-btn mobile-hdr-btn" id="searchFilesBtn" title="Open Media" data-icon="folder"></button>
             </div>
             <span id="searchMeta" class="muted">Search songs, artists, music videos, or local files</span>
           </div>
@@ -223,20 +228,53 @@
             <h3 class="sub-heading">Start browsing</h3>
             <div class="mobile-browse-grid">
               <button class="browse-tile tile-crimson" data-browse-query="Top hits 2026" data-browse-mode="songs">
-                <span>Music Hits</span>
-                <small>Top charts &amp; trending</small>
+                <span>Music</span>
+                <small>Top songs &amp; hits</small>
               </button>
               <button class="browse-tile tile-ruby" data-browse-query="Official music video 4k" data-browse-mode="videos">
                 <span>Video Songs</span>
-                <small>Watch HD music videos</small>
+                <small>HD music videos</small>
               </button>
-              <button class="browse-tile tile-obsidian" data-browse-query="Tamil Hindi hits" data-browse-mode="all">
-                <span>South &amp; Indie</span>
-                <small>Anirudh, Rahman &amp; more</small>
+              <button class="browse-tile tile-blue" data-browse-query="Global Top 50 hits" data-browse-mode="songs">
+                <span>Charts</span>
+                <small>Trending worldwide</small>
               </button>
               <button class="browse-tile tile-garnet" data-browse-action="library">
-                <span>Local Library</span>
-                <small>Your saved audio &amp; MP4s</small>
+                <span>Local Media</span>
+                <small>FLAC, MP3 &amp; MP4</small>
+              </button>
+            </div>
+
+            <h3 class="sub-heading" style="margin-top:20px;">Explore your genres</h3>
+            <div class="genre-explore-row">
+              <button class="genre-reel-card reel-tamil" data-browse-query="Tamil melody mass hits" data-browse-mode="songs">
+                <div class="reel-badge">#Tamil Hits</div>
+              </button>
+              <button class="genre-reel-card reel-indie" data-browse-query="Indie chill acoustic songs" data-browse-mode="songs">
+                <div class="reel-badge">#Indie-Chill</div>
+              </button>
+              <button class="genre-reel-card reel-pop" data-browse-query="Pop R&B hits 2026" data-browse-mode="songs">
+                <div class="reel-badge">#Pop &amp; R&amp;B</div>
+              </button>
+            </div>
+
+            <h3 class="sub-heading" style="margin-top:20px;">Browse all</h3>
+            <div class="mobile-browse-grid">
+              <button class="browse-tile tile-violet" data-browse-query="Discover weekly mix" data-browse-mode="songs">
+                <span>Discover</span>
+                <small>Weekly fresh picks</small>
+              </button>
+              <button class="browse-tile tile-navy" data-browse-query="Romantic hits jukebox" data-browse-mode="songs">
+                <span>Made for you</span>
+                <small>Custom mood mixes</small>
+              </button>
+              <button class="browse-tile tile-amber" data-browse-query="Bass boosted workout phonk" data-browse-mode="songs">
+                <span>Workout</span>
+                <small>High-energy beats</small>
+              </button>
+              <button class="browse-tile tile-obsidian" data-browse-query="Late night lofi rain" data-browse-mode="songs">
+                <span>Late Night</span>
+                <small>Chill &amp; ambient</small>
               </button>
             </div>
           </div>
@@ -266,26 +304,47 @@
         <section id="view-library" class="view">
           <div class="section-header">
             <div class="search-head-cluster">
-              <div class="mobile-brand-avatar mobile-only" aria-hidden="true">Y</div>
+              <button class="mobile-brand-avatar mobile-only avatar-trigger" title="Menu">Y</button>
               <h2>Your Library</h2>
             </div>
             <div class="header-actions">
-              <button class="spotify-btn" id="addFolderBtn">Add Folder</button>
-              <button class="glass-btn" id="rescanBtn">Rescan</button>
+              <button class="icon-btn mobile-only mobile-hdr-btn" id="libSearchToggleBtn" title="Filter Library" data-icon="search"></button>
+              <button class="icon-btn mobile-only mobile-hdr-btn" id="libQuickCreateBtn" title="Create Playlist" data-icon="plus"></button>
+              <button class="spotify-btn desktop-only" id="addFolderBtn">Add Folder</button>
+              <button class="glass-btn desktop-only" id="rescanBtn">Rescan</button>
               <button class="icon-btn mobile-only mobile-hdr-btn" id="libEqBtn" title="Equalizer &amp; Audio" data-icon="sliders"></button>
               <button class="icon-btn mobile-only mobile-hdr-btn" id="libUpdatesBtn" title="Updates &amp; About" data-icon="download"></button>
             </div>
           </div>
 
+          <div id="libSearchRow" class="mobile-search-box hidden" style="margin-bottom:10px;">
+            <span class="search-ico" data-icon="search"></span>
+            <input id="libFilterInput" type="text" placeholder="Filter playlists and songs..." autocomplete="off" />
+            <button id="libFilterClearBtn" class="clear-btn" data-icon="close"></button>
+          </div>
+
           <div class="tab-bar">
-            <button class="tab-btn active" data-lib-tab="local">Local Audio</button>
+            <button class="tab-btn active" data-lib-tab="overview">All</button>
+            <button class="tab-btn" data-lib-tab="playlists">Playlists</button>
+            <button class="tab-btn" data-lib-tab="local">Local Audio</button>
             <button class="tab-btn" data-lib-tab="localVideos">Local Videos</button>
             <button class="tab-btn" data-lib-tab="liked">Liked Songs</button>
-            <button class="tab-btn" data-lib-tab="playlists">Playlists</button>
             <button class="tab-btn" data-lib-tab="history">Recently Played</button>
           </div>
 
-          <div id="lib-panel-local" class="lib-panel active">
+          <div class="lib-sort-row">
+            <button id="libSortBtn" class="lib-sort-btn">
+              <span data-icon="sort"></span>
+              <span id="libSortLabel">Recents</span>
+            </button>
+            <button id="libMobileAddFolderBtn" class="text-btn mobile-only">+ Add Device Media</button>
+          </div>
+
+          <div id="lib-panel-overview" class="lib-panel active">
+            <div id="libraryOverviewList" class="library-overview-list"></div>
+          </div>
+
+          <div id="lib-panel-local" class="lib-panel">
             <div id="folderChips" class="folder-chips"></div>
             <div class="track-table-head">
               <span>#</span><span>Title</span><span>Album</span><span>Format</span>
@@ -325,6 +384,51 @@
             </div>
             <div id="historyTracksList" class="track-list"></div>
           </div>
+        </section>
+
+        <!-- PLAYLIST / MIX DETAIL VIEW (Matching Spotify Playlist Screenshots 1, 3, 4) -->
+        <section id="view-playlist" class="view">
+          <div class="pl-hero" id="plHeroBackdrop">
+            <div class="pl-top-nav">
+              <button id="plBackBtn" class="icon-btn pl-back-btn" title="Back" data-icon="arrowLeft"></button>
+              <span class="muted" id="plTopHint"></span>
+            </div>
+            <div class="pl-hero-content">
+              <div id="plCoverWrap" class="pl-cover-wrap"></div>
+              <div class="pl-hero-meta">
+                <h1 id="plTitle">Playlist</h1>
+                <p id="plDesc" class="muted"></p>
+                <div class="pl-owner-row">
+                  <div class="pl-owner-avatar">Y</div>
+                  <strong id="plOwner">Pavithran</strong>
+                </div>
+                <div id="plStats" class="pl-stats muted">0 songs</div>
+              </div>
+            </div>
+            <div class="pl-actions-bar">
+              <div class="pl-actions-left">
+                <div id="plMiniThumb" class="pl-mini-thumb"></div>
+                <button id="plSaveBtn" class="icon-btn pl-action-ico" title="Save / Add to Queue"></button>
+                <button id="plAddSongsBtn" class="icon-btn pl-action-ico" title="Add songs" data-icon="plusCircle"></button>
+                <button id="plMoreBtn" class="icon-btn pl-action-ico" title="More options" data-icon="moreVert"></button>
+              </div>
+              <div class="pl-actions-right">
+                <button id="plShufflePlayBtn" class="icon-btn pl-shuffle-btn" title="Shuffle Play" data-icon="shuffle"></button>
+                <button id="plPlayAllBtn" class="pl-play-fab" title="Play All" data-icon="play"></button>
+              </div>
+            </div>
+          </div>
+
+          <button id="plInlineAddRow" class="pl-inline-add hidden">
+            <span class="pl-inline-add-box" data-icon="plus"></span>
+            <span>Add to this playlist</span>
+          </button>
+
+          <div class="track-table-head">
+            <span>#</span><span>Title</span><span>Album</span><span>Format</span>
+            <span class="col-dur" data-icon="clock"></span>
+          </div>
+          <div id="plDetailTracksList" class="track-list"></div>
         </section>
 
         <!-- AUDIO & DSP VIEW -->
@@ -571,11 +675,15 @@
   <!-- Fullscreen Audio & Video Player Overlay -->
   <div id="cinemaOverlay" class="cinema-overlay hidden">
     <div class="cinema-top">
-      <div class="hero-actions">
-        <span id="cinemaBadge" class="codec-badge">NOW PLAYING</span>
-        <button id="cinemaVideoToggleBtn" class="mini-mode-btn hidden"></button>
-      </div>
       <button id="closeCinemaBtn" class="glass-btn"><span class="desktop-only">Exit Fullscreen</span><span class="mobile-only" data-icon="chevronDown"></span></button>
+      <div class="cinema-top-center">
+        <span class="cinema-from-kicker">PLAYING FROM</span>
+        <span id="cinemaBadge" class="cinema-source-name">YumaPlayer Mix</span>
+      </div>
+      <div class="hero-actions">
+        <button id="cinemaVideoToggleBtn" class="mini-mode-btn hidden"></button>
+        <button id="cinemaMoreBtn" class="icon-btn mobile-only" title="Track options" data-icon="moreVert"></button>
+      </div>
     </div>
 
     <div id="cinemaVideoStage" class="cinema-video-stage hidden"></div>
@@ -657,6 +765,55 @@
         <button class="glass-btn sleep-opt" data-mins="30">30 minutes</button>
         <button class="glass-btn sleep-opt" data-mins="45">45 minutes</button>
         <button class="glass-btn sleep-opt" data-mins="60">60 minutes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Add Songs to Playlist Modal -->
+  <div id="addSongsModal" class="modal hidden">
+    <div class="modal-card modal-tall">
+      <div class="modal-header">
+        <h3>Add to this playlist</h3>
+        <button id="closeAddSongsModal" class="icon-btn" data-icon="close"></button>
+      </div>
+      <input id="addSongsFilterInput" class="modal-search-input" type="text" placeholder="Search liked, local or online..." />
+      <div id="addSongsList" class="modal-list modal-scroll"></div>
+    </div>
+  </div>
+
+  <!-- Track Action Bottom Sheet Modal -->
+  <div id="trackMenuModal" class="modal hidden">
+    <div class="modal-card sheet-card">
+      <div class="modal-header">
+        <div style="min-width:0;flex:1;">
+          <h3 id="trackMenuTitle" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Track Options</h3>
+          <div id="trackMenuSub" class="muted" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+        </div>
+        <button id="closeTrackMenuModal" class="icon-btn" data-icon="close"></button>
+      </div>
+      <div id="trackMenuActions" class="modal-list"></div>
+    </div>
+  </div>
+
+  <!-- Profile / Pavithran Drawer Modal -->
+  <div id="profileModal" class="modal hidden">
+    <div class="modal-card sheet-card">
+      <div class="modal-header">
+        <div class="pl-owner-row">
+          <div class="pl-owner-avatar">Y</div>
+          <div>
+            <h3 style="margin:0;">YumaPlayer</h3>
+            <div class="muted">Created by Pavithran</div>
+          </div>
+        </div>
+        <button id="closeProfileModal" class="icon-btn" data-icon="close"></button>
+      </div>
+      <div class="modal-list">
+        <button class="glass-btn" id="profCreatePlBtn">+ Create New Playlist</button>
+        <button class="glass-btn" id="profEqBtn">Equalizer &amp; Audio DSP</button>
+        <button class="glass-btn" id="profOpenMediaBtn">Open Local Audio / Video</button>
+        <button class="glass-btn" id="profScanBtn">Scan Device Folders</button>
+        <button class="spotify-btn" id="profUpdatesBtn" style="justify-content:center;">Check In-App Updates</button>
       </div>
     </div>
   </div>

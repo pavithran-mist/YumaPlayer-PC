@@ -34,6 +34,10 @@
     currentView: 'discover',
     viewHistory: ['discover'],
     viewHistoryIndex: 0,
+    playingContext: 'YumaPlayer Mix',
+    activePlaylistSpec: null,
+    librarySort: 'recent',
+    libraryFilter: '',
     isRefillingQueue: false,
     isAdvancing: false
   };
@@ -371,6 +375,11 @@
   async function playTrackWithContext(track, trackList = [track], opts = {}) {
     const list = Array.isArray(trackList) && trackList.length > 0 ? trackList : [track];
     state.queue = [...list];
+    if (opts.contextName) state.playingContext = opts.contextName;
+    else if (state.currentView === 'search') state.playingContext = 'Search Results';
+    else if (state.currentView === 'videos') state.playingContext = 'Video Songs';
+    else if (state.currentView === 'library') state.playingContext = 'Your Library';
+    else state.playingContext = 'YumaPlayer Mix';
     const idx = state.queue.findIndex((t) => t.id === track.id);
     await playTrackAtIndex(idx >= 0 ? idx : 0, opts);
   }
@@ -459,7 +468,7 @@
       badge.textContent = track.source === 'youtube' ? 'YOUTUBE MUSIC' : (track.codec || 'AUDIO');
     }
 
-    $('cinemaBadge').textContent = badge.textContent;
+    $('cinemaBadge').textContent = state.playingContext || badge.textContent;
 
     const isYt = track.source === 'youtube';
     $('npSwitchVideoBtn').classList.toggle('hidden', !isYt);
@@ -630,7 +639,88 @@
     playTrackAtIndex(prevIdx);
   }
 
-  function createTrackRow(track, index, listContext) {
+  function openTrackMenu(track, opts = {}) {
+    if (!track) return;
+    $('trackMenuTitle').textContent = track.title || 'Track';
+    $('trackMenuSub').textContent = `${track.artist || 'Unknown'} • ${track.album || 'Single'}`;
+    const list = $('trackMenuActions');
+    list.innerHTML = '';
+
+    const addItem = (label, onClick) => {
+      const btn = document.createElement('button');
+      btn.className = 'glass-btn sheet-action-btn';
+      btn.textContent = label;
+      btn.addEventListener('click', async () => {
+        $('trackMenuModal').classList.add('hidden');
+        await onClick();
+      });
+      list.appendChild(btn);
+    };
+
+    addItem('Play Now', () => playTrackWithContext(track, [track], { contextName: state.playingContext }));
+    addItem('Play Next', () => {
+      const insertIdx = Math.max(0, state.queueIndex + 1);
+      state.queue.splice(insertIdx, 0, track);
+      renderQueue();
+      showToast('Will play next');
+    });
+    addItem('Add to Queue', () => {
+      state.queue.push(track);
+      renderQueue();
+      showToast('Added to queue');
+    });
+    addItem(isLiked(track.id) ? 'Remove from Liked Songs' : 'Save to Liked Songs', async () => {
+      const res = await window.yumaAPI.store.toggleLike(track);
+      state.store.likedTracks = res.likedTracks;
+      renderAllLists();
+      renderSidebarLibrary();
+      if (state.currentTrack?.id === track.id) renderNowPlaying(track);
+      if (state.currentView === 'playlist' && state.activePlaylistSpec) {
+        if (state.activePlaylistSpec.kind === 'liked') state.activePlaylistSpec.tracks = res.likedTracks;
+        openPlaylistDetail(state.activePlaylistSpec, { keepHistory: true });
+      }
+      showToast(res.liked ? 'Saved to Liked Songs' : 'Removed from Liked Songs');
+    });
+    addItem('Add to Playlist...', () => openPlaylistModal(track));
+    if (opts.playlistId) {
+      addItem('Remove from this Playlist', async () => {
+        const updated = await window.yumaAPI.store.removeFromPlaylist(opts.playlistId, track.id);
+        const pl = state.store.playlists.find((p) => p.id === opts.playlistId);
+        if (pl && updated) pl.tracks = updated.tracks;
+        renderAllLists();
+        if (state.currentView === 'playlist' && state.activePlaylistSpec?.id === opts.playlistId) {
+          state.activePlaylistSpec.tracks = pl ? pl.tracks : [];
+          openPlaylistDetail(state.activePlaylistSpec, { keepHistory: true });
+        }
+        showToast('Removed from playlist');
+      });
+    }
+    if (track.source === 'youtube') {
+      addItem(state.videoMode ? 'Switch to Audio Mode' : 'Watch Video Version', () => {
+        if (state.currentTrack?.id === track.id) toggleVideoMode();
+        else playTrackWithContext(track, [track], { forceVideo: true });
+      });
+    }
+    addItem('View Lyrics', () => {
+      if (state.currentTrack?.id !== track.id) {
+        playTrackWithContext(track, [track]).then(() => {
+          if (window.innerWidth <= 900) {
+            openCinema();
+            $('cinemaOverlay').classList.add('show-lyrics');
+          } else switchSideTab('lyrics');
+        });
+      } else if (window.innerWidth <= 900) {
+        openCinema();
+        $('cinemaOverlay').classList.add('show-lyrics');
+      } else {
+        switchSideTab('lyrics');
+      }
+    });
+
+    $('trackMenuModal').classList.remove('hidden');
+  }
+
+  function createTrackRow(track, index, listContext, opts = {}) {
     const row = document.createElement('div');
     const isCurrent = state.currentTrack?.id === track.id;
     row.className = `track-row ${isCurrent ? 'playing' : ''}`;
@@ -677,6 +767,7 @@
           <button class="icon-btn row-queue" title="Add to queue">${ICONS.plus}</button>
           <button class="icon-btn row-playlist" title="Add to playlist">${ICONS.listPlus}</button>
           <button class="icon-btn row-like ${liked ? 'liked' : ''}" title="Save to Liked Songs">${liked ? ICONS.heartFilled : ICONS.heart}</button>
+          <button class="icon-btn row-more" title="More options">${ICONS.moreVert}</button>
         </div>
         <span class="track-dur">${formatTime(track.duration)}</span>
       </div>
@@ -687,7 +778,7 @@
       if (isCurrent) {
         toggleCurrentPlay();
       } else {
-        playTrackWithContext(track, listContext);
+        playTrackWithContext(track, listContext, { contextName: opts.contextName });
       }
     });
 
@@ -707,10 +798,12 @@
       if (state.currentTrack?.id === track.id) renderNowPlaying(track);
     });
 
+    row.querySelector('.row-more')?.addEventListener('click', () => openTrackMenu(track, opts));
+
     return row;
   }
 
-  function renderTrackList(containerId, tracks, emptyMsg) {
+  function renderTrackList(containerId, tracks, emptyMsg, opts = {}) {
     const container = $(containerId);
     if (!container) return;
     container.innerHTML = '';
@@ -718,12 +811,36 @@
       container.innerHTML = `<div class="empty-state">${emptyMsg}</div>`;
       return;
     }
-    tracks.forEach((t, idx) => container.appendChild(createTrackRow(t, idx, tracks)));
+    tracks.forEach((t, idx) => container.appendChild(createTrackRow(t, idx, tracks, opts)));
   }
 
   function renderQuickPicks() {
     const grid = $('quickPicksGrid');
     if (!grid) return;
+    grid.innerHTML = '';
+
+    // Pin Liked Songs & custom Playlists cleanly in Home Quick Picks (matching Spotify 2x4 grid)
+    if (state.homeFilter === 'all') {
+      const likedCard = document.createElement('div');
+      likedCard.className = 'quick-pick-card';
+      likedCard.innerHTML = `
+        <div class="qp-grad-thumb liked-grad">${ICONS.heartFilled}</div>
+        <span>Liked Songs</span>
+        <div class="qp-play">${ICONS.play}</div>
+      `;
+      likedCard.addEventListener('click', () =>
+        openPlaylistDetail({
+          id: 'liked',
+          name: 'Liked Songs',
+          description: 'All songs and videos you saved',
+          owner: 'Pavithran',
+          tracks: state.store?.likedTracks || [],
+          kind: 'liked'
+        })
+      );
+      grid.appendChild(likedCard);
+    }
+
     let pool = [];
     if (state.homeFilter === 'videos') {
       pool = [...state.localTracks.filter((t) => t.mediaType === 'video'), ...state.videoResults];
@@ -737,6 +854,7 @@
       ];
     }
 
+    const maxSongs = state.homeFilter === 'all' ? 7 : 8;
     const unique = [];
     const seen = new Set();
     for (const t of pool) {
@@ -744,10 +862,9 @@
         seen.add(t.id);
         unique.push(t);
       }
-      if (unique.length >= 6) break;
+      if (unique.length >= maxSongs) break;
     }
 
-    grid.innerHTML = '';
     unique.forEach((track) => {
       const card = document.createElement('div');
       card.className = 'quick-pick-card';
@@ -760,7 +877,7 @@
       if (imgEl && track.videoId) {
         imgEl.onerror = () => { imgEl.src = `https://i.ytimg.com/vi/${track.videoId}/hqdefault.jpg`; };
       }
-      card.addEventListener('click', () => playTrackWithContext(track, unique));
+      card.addEventListener('click', () => playTrackWithContext(track, unique, { contextName: 'Quick Picks' }));
       grid.appendChild(card);
     });
   }
@@ -785,7 +902,17 @@
     for (const sec of sections) {
       const shelf = document.createElement('div');
       shelf.className = 'shelf';
-      shelf.innerHTML = `<div class="shelf-head"><div class="shelf-title">${escapeHtml(sec.title)}</div></div><div class="cards-grid"></div>`;
+      shelf.innerHTML = `<div class="shelf-head shelf-clickable"><div class="shelf-title">${escapeHtml(sec.title)}</div><span class="muted shelf-open-link">Open mix ›</span></div><div class="cards-grid"></div>`;
+      shelf.querySelector('.shelf-head').addEventListener('click', () => {
+        openPlaylistDetail({
+          id: `shelf_${sec.title}`,
+          name: sec.title,
+          description: 'Curated mix from YumaPlayer discovery',
+          owner: 'YumaPlayer · Pavithran',
+          tracks: sec.tracks,
+          kind: 'shelf'
+        });
+      });
       const grid = shelf.querySelector('.cards-grid');
 
       sec.tracks.forEach((track) => {
@@ -803,12 +930,224 @@
         if (imgEl && track.videoId) {
           imgEl.onerror = () => { imgEl.src = `https://i.ytimg.com/vi/${track.videoId}/hqdefault.jpg`; };
         }
-        card.addEventListener('click', () => playTrackWithContext(track, sec.tracks));
+        card.addEventListener('click', () => playTrackWithContext(track, sec.tracks, { contextName: sec.title }));
         grid.appendChild(card);
       });
 
       container.appendChild(shelf);
     }
+  }
+
+  function formatPlaylistDuration(tracks) {
+    const totalSec = (tracks || []).reduce((acc, t) => acc + (Number(t?.duration) || 0), 0);
+    if (!totalSec) return `${tracks.length} ${tracks.length === 1 ? 'song' : 'songs'}`;
+    const hrs = Math.floor(totalSec / 3600);
+    const mins = Math.max(1, Math.floor((totalSec % 3600) / 60));
+    const durStr = hrs > 0 ? `${hrs}h ${mins}min` : `${mins}min`;
+    return `${tracks.length} ${tracks.length === 1 ? 'song' : 'songs'} • ${durStr}`;
+  }
+
+  function buildCoverArtHtml(spec) {
+    if (spec.kind === 'liked') {
+      return `<div class="pl-cover-grad liked-grad">${ICONS.heartFilled}</div>`;
+    }
+    const arts = [];
+    const seen = new Set();
+    for (const t of spec.tracks || []) {
+      const u = getHdArtwork(t);
+      if (u && !seen.has(u)) {
+        seen.add(u);
+        arts.push(u);
+      }
+      if (arts.length >= 4) break;
+    }
+    if (arts.length >= 4) {
+      return `<div class="pl-collage">${arts.map((u) => `<img src="${escapeHtml(u)}" alt="" />`).join('')}</div>`;
+    }
+    if (arts.length >= 1) {
+      return `<img class="pl-cover-single" src="${escapeHtml(arts[0])}" alt="" />`;
+    }
+    return `<div class="pl-cover-grad">${ICONS.music}</div>`;
+  }
+
+  function openPlaylistDetail(spec, { keepHistory = false } = {}) {
+    state.activePlaylistSpec = spec;
+    $('plTitle').textContent = spec.name || 'Playlist';
+    $('plDesc').textContent = spec.description || '';
+    $('plOwner').textContent = spec.owner || 'Pavithran';
+    $('plStats').textContent = formatPlaylistDuration(spec.tracks || []);
+    $('plTopHint').textContent = spec.kind === 'playlist' ? 'PLAYLIST' : 'COLLECTION';
+    $('plCoverWrap').innerHTML = buildCoverArtHtml(spec);
+    $('plMiniThumb').innerHTML = buildCoverArtHtml(spec);
+
+    const isEditable = spec.kind === 'playlist';
+    $('plInlineAddRow').classList.toggle('hidden', !isEditable);
+    $('plAddSongsBtn').classList.toggle('hidden', !isEditable);
+    $('plSaveBtn').innerHTML = spec.kind === 'shelf' ? ICONS.plusCircle : ICONS.download;
+    $('plPlayAllBtn').innerHTML = ICONS.play;
+    $('plHeroBackdrop').style.setProperty('--pl-tint', spec.kind === 'liked' ? '#4c1d95' : '#6b0f1a');
+
+    renderTrackList(
+      'plDetailTracksList',
+      spec.tracks || [],
+      isEditable ? 'Tap "+ Add to this playlist" above to add songs.' : 'No tracks in this collection yet.',
+      { playlistId: isEditable ? spec.id : null, contextName: spec.name }
+    );
+
+    switchView('playlist', { recordHistory: !keepHistory });
+  }
+
+  function openAddSongsModal(playlistId) {
+    const modal = $('addSongsModal');
+    const listEl = $('addSongsList');
+    const filterInput = $('addSongsFilterInput');
+    const pl = (state.store?.playlists || []).find((p) => p.id === playlistId);
+    if (!pl) return;
+
+    const renderCandidates = () => {
+      const q = (filterInput.value || '').trim().toLowerCase();
+      const poolMap = new Map();
+      [
+        ...(state.store?.likedTracks || []),
+        ...(state.store?.history || []),
+        ...(state.localTracks || []),
+        ...(state.discoverySections[0]?.tracks || []),
+        ...(state.ytSearchResults || [])
+      ].forEach((t) => {
+        if (t && t.id && !poolMap.has(t.id)) poolMap.set(t.id, t);
+      });
+      const existingIds = new Set((pl.tracks || []).map((t) => t.id));
+      let items = Array.from(poolMap.values());
+      if (q) {
+        items = items.filter(
+          (t) =>
+            (t.title || '').toLowerCase().includes(q) ||
+            (t.artist || '').toLowerCase().includes(q)
+        );
+      }
+      listEl.innerHTML = '';
+      if (!items.length) {
+        listEl.innerHTML = '<div class="empty-state">Search songs in Search tab or type above to match saved tracks.</div>';
+        return;
+      }
+      items.slice(0, 40).forEach((t) => {
+        const added = existingIds.has(t.id);
+        const row = document.createElement('div');
+        row.className = 'add-song-row';
+        const thumb = getHdArtwork(t);
+        row.innerHTML = `
+          ${thumb ? `<img src="${escapeHtml(thumb)}" alt="" />` : `<div class="add-song-ph">${ICONS.music}</div>`}
+          <div class="track-meta">
+            <div class="track-name">${escapeHtml(t.title)}</div>
+            <div class="track-sub">${escapeHtml(t.artist)}</div>
+          </div>
+          <button class="glass-btn add-pick-btn">${added ? 'Added' : 'Add'}</button>
+        `;
+        const btn = row.querySelector('button');
+        btn.disabled = added;
+        btn.addEventListener('click', async () => {
+          const updated = await window.yumaAPI.store.addToPlaylist(pl.id, t);
+          if (updated) pl.tracks = updated.tracks;
+          existingIds.add(t.id);
+          btn.textContent = 'Added';
+          btn.disabled = true;
+          renderPlaylists();
+          if (state.currentView === 'playlist' && state.activePlaylistSpec?.id === pl.id) {
+            state.activePlaylistSpec.tracks = pl.tracks;
+            openPlaylistDetail(state.activePlaylistSpec, { keepHistory: true });
+          }
+          showToast(`Added to ${pl.name}`);
+        });
+        listEl.appendChild(row);
+      });
+    };
+
+    filterInput.value = '';
+    filterInput.oninput = renderCandidates;
+    renderCandidates();
+    modal.classList.remove('hidden');
+  }
+
+  function renderLibraryOverview() {
+    const container = $('libraryOverviewList');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const entries = [
+      {
+        id: 'liked',
+        name: 'Liked Songs',
+        sub: `Playlist • ${(state.store?.likedTracks || []).length} songs`,
+        pinned: true,
+        kind: 'liked',
+        tracks: state.store?.likedTracks || [],
+        description: 'Songs and music videos you liked',
+        sortOrder: 0
+      },
+      {
+        id: 'recent',
+        name: 'Recently Played',
+        sub: `Mix • ${(state.store?.history || []).length} songs`,
+        pinned: true,
+        kind: 'history',
+        tracks: state.store?.history || [],
+        description: 'Your recent listening activity',
+        sortOrder: 1
+      },
+      ...(state.store?.playlists || []).map((pl, idx) => ({
+        id: pl.id,
+        name: pl.name,
+        sub: `Playlist • ${pl.tracks.length} ${pl.tracks.length === 1 ? 'song' : 'songs'}`,
+        pinned: false,
+        kind: 'playlist',
+        tracks: pl.tracks || [],
+        description: 'Custom playlist • Created in YumaPlayer',
+        sortOrder: 10 + idx
+      })),
+      {
+        id: 'local_audio',
+        name: 'Local Audio Library',
+        sub: `Device Folder • ${state.localTracks.filter((t) => t.mediaType !== 'video').length} tracks`,
+        pinned: false,
+        kind: 'localAudio',
+        tracks: state.localTracks.filter((t) => t.mediaType !== 'video'),
+        description: 'Offline FLAC, MP3, WAV & audio files',
+        sortOrder: 900
+      },
+      {
+        id: 'local_video',
+        name: 'Local Video Songs',
+        sub: `Device Folder • ${state.localTracks.filter((t) => t.mediaType === 'video').length} videos`,
+        pinned: false,
+        kind: 'localVideos',
+        tracks: state.localTracks.filter((t) => t.mediaType === 'video'),
+        description: 'Offline MP4, MKV & WebM video files',
+        sortOrder: 901
+      }
+    ];
+
+    const q = (state.libraryFilter || '').trim().toLowerCase();
+    let visible = q ? entries.filter((e) => e.name.toLowerCase().includes(q)) : entries;
+
+    if (state.librarySort === 'alpha') {
+      visible = [...visible].sort((a, b) => a.name.localeCompare(b.name));
+    } else if (state.librarySort === 'count') {
+      visible = [...visible].sort((a, b) => b.tracks.length - a.tracks.length);
+    }
+
+    visible.forEach((item) => {
+      const row = document.createElement('div');
+      row.className = 'lib-ov-row';
+      row.innerHTML = `
+        <div class="lib-ov-thumb">${buildCoverArtHtml(item)}</div>
+        <div class="lib-ov-meta">
+          <div class="lib-ov-title">${escapeHtml(item.name)}</div>
+          <div class="lib-ov-sub">${item.pinned ? `<span class="pin-badge">${ICONS.pin}</span>` : ''}<span>${escapeHtml(item.sub)}</span></div>
+        </div>
+      `;
+      row.addEventListener('click', () => openPlaylistDetail(item));
+      container.appendChild(row);
+    });
   }
 
   function renderSidebarLibrary() {
@@ -827,11 +1166,18 @@
         </div>
       `;
       div.addEventListener('click', () => {
-        switchView('library');
-        document.querySelector('.tab-btn[data-lib-tab="playlists"]')?.click();
+        openPlaylistDetail({
+          id: pl.id,
+          name: pl.name,
+          description: 'Custom playlist',
+          owner: 'Pavithran',
+          tracks: pl.tracks || [],
+          kind: 'playlist'
+        });
       });
       container.appendChild(div);
     });
+    renderLibraryOverview();
   }
 
   function renderFolders() {
@@ -900,9 +1246,9 @@
       card.className = 'playlist-card';
       card.innerHTML = `
         <div class="playlist-card-head">
-          <div>
+          <div class="pl-card-open" style="cursor:pointer;">
             <strong>${escapeHtml(pl.name)}</strong>
-            <span class="muted"> • ${pl.tracks.length} songs</span>
+            <span class="muted"> • ${pl.tracks.length} songs (Open ›)</span>
           </div>
           <div class="hero-actions">
             <button class="spotify-btn pl-play-btn">${ICONS.play} Play</button>
@@ -912,8 +1258,18 @@
         <div class="track-list pl-tracks"></div>
       `;
 
+      card.querySelector('.pl-card-open').addEventListener('click', () => {
+        openPlaylistDetail({
+          id: pl.id,
+          name: pl.name,
+          description: 'Custom playlist',
+          owner: 'Pavithran',
+          tracks: pl.tracks || [],
+          kind: 'playlist'
+        });
+      });
       card.querySelector('.pl-play-btn').addEventListener('click', () => {
-        if (pl.tracks.length > 0) playTrackWithContext(pl.tracks[0], pl.tracks);
+        if (pl.tracks.length > 0) playTrackWithContext(pl.tracks[0], pl.tracks, { contextName: pl.name });
       });
       card.querySelector('.pl-del-btn').addEventListener('click', async () => {
         state.store.playlists = await window.yumaAPI.store.deletePlaylist(pl.id);
@@ -921,7 +1277,9 @@
       });
 
       const listEl = card.querySelector('.pl-tracks');
-      pl.tracks.forEach((t, idx) => listEl.appendChild(createTrackRow(t, idx, pl.tracks)));
+      pl.tracks.forEach((t, idx) =>
+        listEl.appendChild(createTrackRow(t, idx, pl.tracks, { playlistId: pl.id, contextName: pl.name }))
+      );
       container.appendChild(card);
     });
   }
@@ -965,6 +1323,7 @@
     renderLiked();
     renderHistory();
     renderPlaylists();
+    renderLibraryOverview();
     if (state.ytSearchResults.length) {
       renderTrackList('ytSearchList', state.ytSearchResults, 'No results found.');
     }
@@ -1311,7 +1670,7 @@
       $('searchMeta').textContent = 'Search songs, artists, music videos, or local files';
       mobileSearchInput?.focus();
     });
-    document.querySelectorAll('.browse-tile').forEach((tile) => {
+    document.querySelectorAll('.browse-tile, .genre-reel-card').forEach((tile) => {
       tile.addEventListener('click', () => {
         if (tile.dataset.browseAction === 'library') {
           switchView('library');
@@ -1325,10 +1684,124 @@
     });
 
     $('mobileEqBtn')?.addEventListener('click', () => switchView('dsp'));
+    $('searchEqBtn')?.addEventListener('click', () => switchView('dsp'));
+    $('searchFilesBtn')?.addEventListener('click', () => $('openFilesQuickBtn').click());
     $('libEqBtn')?.addEventListener('click', () => switchView('dsp'));
     $('mobileUpdatesBtn')?.addEventListener('click', () => switchView('updates'));
     $('libUpdatesBtn')?.addEventListener('click', () => switchView('updates'));
     $('mobileOpenBtn')?.addEventListener('click', () => $('openFilesQuickBtn').click());
+
+    document.querySelectorAll('.avatar-trigger').forEach((btn) => {
+      btn.addEventListener('click', () => $('profileModal')?.classList.remove('hidden'));
+    });
+    $('closeProfileModal')?.addEventListener('click', () => $('profileModal')?.classList.add('hidden'));
+    $('profEqBtn')?.addEventListener('click', () => {
+      $('profileModal')?.classList.add('hidden');
+      switchView('dsp');
+    });
+    $('profUpdatesBtn')?.addEventListener('click', () => {
+      $('profileModal')?.classList.add('hidden');
+      switchView('updates');
+    });
+    $('profOpenMediaBtn')?.addEventListener('click', () => {
+      $('profileModal')?.classList.add('hidden');
+      $('openFilesQuickBtn').click();
+    });
+    $('profScanBtn')?.addEventListener('click', () => {
+      $('profileModal')?.classList.add('hidden');
+      $('addFolderBtn').click();
+    });
+    $('profCreatePlBtn')?.addEventListener('click', () => {
+      $('profileModal')?.classList.add('hidden');
+      switchView('library');
+      document.querySelector('.tab-btn[data-lib-tab="playlists"]')?.click();
+      setTimeout(() => $('newPlaylistInput')?.focus(), 80);
+    });
+
+    $('libSearchToggleBtn')?.addEventListener('click', () => {
+      const row = $('libSearchRow');
+      const open = row.classList.toggle('hidden');
+      if (!open) $('libFilterInput')?.focus();
+      else {
+        state.libraryFilter = '';
+        if ($('libFilterInput')) $('libFilterInput').value = '';
+        renderLibraryOverview();
+      }
+    });
+    $('libFilterInput')?.addEventListener('input', (e) => {
+      state.libraryFilter = e.target.value;
+      renderLibraryOverview();
+    });
+    $('libFilterClearBtn')?.addEventListener('click', () => {
+      state.libraryFilter = '';
+      if ($('libFilterInput')) $('libFilterInput').value = '';
+      $('libSearchRow')?.classList.add('hidden');
+      renderLibraryOverview();
+    });
+    $('libQuickCreateBtn')?.addEventListener('click', () => {
+      document.querySelector('.tab-btn[data-lib-tab="playlists"]')?.click();
+      setTimeout(() => $('newPlaylistInput')?.focus(), 80);
+    });
+    $('libMobileAddFolderBtn')?.addEventListener('click', () => $('addFolderBtn').click());
+    $('libSortBtn')?.addEventListener('click', () => {
+      const order = ['recent', 'alpha', 'count'];
+      const labels = { recent: 'Recents', alpha: 'A–Z', count: 'Most songs' };
+      state.librarySort = order[(order.indexOf(state.librarySort) + 1) % order.length];
+      $('libSortLabel').textContent = labels[state.librarySort];
+      renderLibraryOverview();
+    });
+
+    // Playlist Detail View Controls
+    $('plBackBtn')?.addEventListener('click', () => switchView('library'));
+    $('plPlayAllBtn')?.addEventListener('click', () => {
+      const tracks = state.activePlaylistSpec?.tracks || [];
+      if (!tracks.length) return showToast('Add some songs to play');
+      playTrackWithContext(tracks[0], tracks, { contextName: state.activePlaylistSpec.name });
+    });
+    $('plShufflePlayBtn')?.addEventListener('click', () => {
+      const tracks = state.activePlaylistSpec?.tracks || [];
+      if (!tracks.length) return showToast('No tracks to shuffle');
+      state.shuffle = true;
+      $('shuffleBtn').classList.add('active');
+      $('cinemaShuffleBtn').classList.add('active');
+      const idx = Math.floor(Math.random() * tracks.length);
+      playTrackWithContext(tracks[idx], tracks, { contextName: state.activePlaylistSpec.name });
+    });
+    $('plSaveBtn')?.addEventListener('click', async () => {
+      const spec = state.activePlaylistSpec;
+      if (!spec || !spec.tracks?.length) return;
+      if (spec.kind === 'shelf') {
+        const pl = await window.yumaAPI.store.createPlaylist(spec.name);
+        for (const t of spec.tracks) {
+          await window.yumaAPI.store.addToPlaylist(pl.id, t);
+        }
+        state.store.playlists = (await window.yumaAPI.store.getState()).playlists;
+        renderPlaylists();
+        $('plSaveBtn').innerHTML = ICONS.checkCircle;
+        showToast(`Saved "${spec.name}" to Your Library`);
+      } else {
+        state.queue.push(...spec.tracks);
+        renderQueue();
+        $('plSaveBtn').innerHTML = ICONS.checkCircle;
+        showToast(`Queued ${spec.tracks.length} songs`);
+      }
+    });
+    $('plAddSongsBtn')?.addEventListener('click', () => {
+      if (state.activePlaylistSpec?.kind === 'playlist') openAddSongsModal(state.activePlaylistSpec.id);
+    });
+    $('plInlineAddRow')?.addEventListener('click', () => {
+      if (state.activePlaylistSpec?.kind === 'playlist') openAddSongsModal(state.activePlaylistSpec.id);
+    });
+    $('plMoreBtn')?.addEventListener('click', () => {
+      const spec = state.activePlaylistSpec;
+      if (!spec) return;
+      if (spec.tracks?.length) openTrackMenu(spec.tracks[0], { playlistId: spec.kind === 'playlist' ? spec.id : null });
+    });
+    $('closeAddSongsModal')?.addEventListener('click', () => $('addSongsModal')?.classList.add('hidden'));
+    $('closeTrackMenuModal')?.addEventListener('click', () => $('trackMenuModal')?.classList.add('hidden'));
+    $('cinemaMoreBtn')?.addEventListener('click', () => {
+      if (state.currentTrack) openTrackMenu(state.currentTrack);
+    });
 
     $('videoSearchTriggerBtn').addEventListener('click', () => {
       document.querySelector('.tab-btn[data-search-mode="videos"]')?.click();

@@ -29,6 +29,12 @@
     clock: `<svg ${SVG_ATTRS}><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>`,
     close: `<svg ${SVG_ATTRS}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
     chevronDown: `<svg ${SVG_ATTRS}><polyline points="6 9 12 15 18 9"/></svg>`,
+    arrowLeft: `<svg ${SVG_ATTRS}><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>`,
+    moreVert: `<svg ${FILL_ATTRS}><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>`,
+    sort: `<svg ${SVG_ATTRS}><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="m21 8-4-4-4 4"/><path d="M17 4v16"/></svg>`,
+    pin: `<svg ${FILL_ATTRS}><path d="M16 3l5 5-2 2-2-1-4 4v5l-2 2-3-5-5 3-1-1 3-5-5-3 2-2h5l4-4-1-2 2-2z"/></svg>`,
+    plusCircle: `<svg ${SVG_ATTRS}><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>`,
+    checkCircle: `<svg ${FILL_ATTRS}><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1.1 14.2L6.7 12l1.4-1.4 2.8 2.8 5.6-5.6 1.4 1.4z"/></svg>`,
     listPlus: `<svg ${SVG_ATTRS}><path d="M11 12H3"/><path d="M16 6H3"/><path d="M16 18H3"/><path d="M18 9v6"/><path d="M21 12h-6"/></svg>`
   };
 

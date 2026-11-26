@@ -69,6 +69,14 @@
   }
 
   /* ===================== HEADERS ===================== */
+  #view-discover .home-header {
+    display: none !important;
+  }
+
+  .mobile-chip-avatar {
+    display: inline-flex !important;
+  }
+
   .home-header,
   .section-header {
     display: flex !important;
@@ -236,12 +244,17 @@
     overflow: hidden !important;
   }
 
-  .quick-pick-card img {
+  .quick-pick-card img,
+  .quick-pick-card .qp-grad-thumb {
     width: 54px !important;
     height: 54px !important;
     border-radius: 6px 0 0 6px !important;
     object-fit: cover !important;
     flex-shrink: 0 !important;
+  }
+
+  .shelf-open-link {
+    display: none !important;
   }
 
   .quick-pick-card span {
@@ -442,8 +455,52 @@
 
   .tile-crimson { background: linear-gradient(135deg, #d81320 0%, #68060d 100%); }
   .tile-ruby { background: linear-gradient(135deg, #9d174d 0%, #3d081e 100%); }
+  .tile-blue { background: linear-gradient(135deg, #1d4ed8 0%, #0f172a 100%); }
   .tile-obsidian { background: linear-gradient(135deg, #3f3848 0%, #17141d 100%); }
   .tile-garnet { background: linear-gradient(135deg, #b91c1c 0%, #2a0a0c 100%); }
+  .tile-violet { background: linear-gradient(135deg, #6d28d9 0%, #1e1038 100%); }
+  .tile-navy { background: linear-gradient(135deg, #0f766e 0%, #07201e 100%); }
+  .tile-amber { background: linear-gradient(135deg, #b45309 0%, #2b1404 100%); }
+
+  /* Explore Your Genres: 3 Tall Portrait Cards (Image 5) */
+  .genre-explore-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .genre-reel-card {
+    position: relative;
+    aspect-ratio: 3 / 4.7;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+    display: flex;
+    align-items: flex-end;
+    padding: 10px 8px;
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .reel-tamil {
+    background: radial-gradient(circle at 60% 25%, rgba(255, 42, 60, 0.65), transparent 55%),
+      linear-gradient(175deg, #4f0912 0%, #150508 60%, #08080a 100%);
+  }
+  .reel-indie {
+    background: radial-gradient(circle at 40% 28%, rgba(56, 189, 248, 0.35), transparent 58%),
+      linear-gradient(175deg, #1b2838 0%, #0c121a 60%, #07080a 100%);
+  }
+  .reel-pop {
+    background: radial-gradient(circle at 50% 28%, rgba(192, 132, 252, 0.45), transparent 58%),
+      linear-gradient(175deg, #3b174f 0%, #16091e 60%, #08080a 100%);
+  }
+
+  .reel-badge {
+    font-size: 12px;
+    font-weight: 800;
+    color: #ffffff;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.75);
+  }
 
   /* ===================== SPACIOUS TRACK LISTS (ACTUAL DOM .track-row) ===================== */
   .sub-heading {
@@ -520,23 +577,53 @@
     opacity: 1 !important;
     display: flex;
     align-items: center;
-    gap: 2px;
+    gap: 0;
   }
 
-  .track-row .row-playlist {
+  .track-row .row-playlist,
+  .track-row .row-queue {
     display: none;
   }
 
-  /* ===================== LIBRARY HEADER & PLAYLISTS ===================== */
+  /* ===================== LIBRARY HEADER & PLAYLIST DETAIL (IMAGES 1, 2, 3, 4) ===================== */
   #view-library .section-header h2 {
-    font-size: 19px !important;
+    font-size: 20px !important;
   }
-  #view-library .header-actions .spotify-btn {
-    padding: 5px 10px !important;
-    font-size: 11px !important;
+
+  #view-playlist.view {
+    padding-top: 0 !important;
   }
-  #view-library #rescanBtn {
-    display: none !important;
+
+  .pl-hero {
+    margin: 0 -16px 12px !important;
+    padding: calc(14px + env(safe-area-inset-top, 0px)) 16px 14px !important;
+  }
+
+  .pl-hero-content {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 14px !important;
+  }
+
+  .pl-cover-wrap {
+    width: 214px !important;
+    height: 214px !important;
+    margin: 0 auto !important;
+    border-radius: 6px !important;
+  }
+
+  .pl-hero-meta h1 {
+    font-size: 23px !important;
+    margin-bottom: 4px !important;
+  }
+
+  .pl-actions-bar {
+    margin-top: 12px !important;
+  }
+
+  .pl-play-fab {
+    width: 46px !important;
+    height: 46px !important;
   }
 
   .video-stage-card {
@@ -795,10 +882,6 @@
     gap: 8px;
   }
 
-  .cinema-top .hero-actions {
-    display: contents !important;
-  }
-
   #closeCinemaBtn {
     grid-row: 1;
     grid-column: 1;
@@ -821,17 +904,24 @@
     grid-row: 1;
     grid-column: 2;
     justify-self: center;
-    font-size: 11px !important;
+    font-size: 12px !important;
     font-weight: 700 !important;
-    letter-spacing: 0.8px !important;
-    background: transparent !important;
-    color: rgba(255, 255, 255, 0.85) !important;
+    color: #ffffff !important;
   }
 
-  #cinemaVideoToggleBtn {
+  .cinema-top-center {
+    grid-row: 1;
+    grid-column: 2;
+    justify-self: center;
+  }
+
+  .cinema-top .hero-actions {
     grid-row: 1;
     grid-column: 3;
     justify-self: end;
+    display: flex !important;
+    align-items: center;
+    gap: 4px;
   }
 
   .cinema-video-stage {

@@ -441,7 +441,7 @@ class MainActivity : AppCompatActivity() {
         fun getConfig(): String {
             return JSONObject().apply {
                 put("streamPort", mediaServer.port)
-                put("version", "1.4.3")
+                put("version", "1.5.0")
                 put("platform", "android")
             }.toString()
         }
@@ -640,7 +640,7 @@ class MainActivity : AppCompatActivity() {
         @JavascriptInterface
         fun checkUpdates(reqId: String) {
             executor.execute {
-                val res = YumaApiClient.checkUpdates("1.4.3")
+                val res = YumaApiClient.checkUpdates("1.5.0")
                 sendCallback(reqId, res.toString())
             }
         }
@@ -654,7 +654,7 @@ class MainActivity : AppCompatActivity() {
                         instanceFollowRedirects = true
                         connectTimeout = 15000
                         readTimeout = 30000
-                        setRequestProperty("User-Agent", "YumaPlayer-Android/1.4.3")
+                        setRequestProperty("User-Agent", "YumaPlayer-Android/1.5.0")
                     }
                     val total = conn.contentLengthLong.coerceAtLeast(1L)
                     val outFile = File(cacheDir, apkName.ifBlank { "YumaPlayer-Update.apk" })
@@ -696,7 +696,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun emitUpdateProgress(state: String, progress: Int, message: String) {
         val obj = JSONObject().apply {
-            put("currentVersion", "1.4.3")
+            put("currentVersion", "1.5.0")
             put("state", state)
             put("progress", progress)
             put("message", message)
