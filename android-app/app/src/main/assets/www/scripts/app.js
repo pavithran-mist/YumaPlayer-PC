@@ -1083,6 +1083,7 @@
     if ($('mobileSearchInput') && $('mobileSearchInput').value !== query) $('mobileSearchInput').value = query;
     $('mobileSearchClearBtn')?.classList.toggle('hidden', !q);
     $('mobileBrowseBlock')?.classList.add('hidden');
+    $('view-search')?.classList.add('has-search');
     $('searchMeta').textContent = `Searching for "${q}"...`;
 
     const localMatches = state.localTracks.filter(
@@ -1271,6 +1272,7 @@
       $('mobileSearchClearBtn')?.classList.toggle('hidden', !val);
       if (!val.trim()) {
         $('mobileBrowseBlock')?.classList.remove('hidden');
+        $('view-search')?.classList.remove('has-search');
       }
     };
     const onSearchInputEvent = (val) => {
@@ -1303,6 +1305,7 @@
     $('mobileSearchClearBtn')?.addEventListener('click', () => {
       syncSearchVal('');
       $('mobileBrowseBlock')?.classList.remove('hidden');
+      $('view-search')?.classList.remove('has-search');
       $('localSearchBlock').classList.add('hidden');
       $('ytSearchList').innerHTML = '<div class="empty-state">Tap a category or type above to search.</div>';
       $('searchMeta').textContent = 'Search songs, artists, music videos, or local files';
@@ -1457,6 +1460,11 @@
 
     $('quickLyricsBtn').addEventListener('click', () => switchSideTab('lyrics'));
     $('quickQueueBtn').addEventListener('click', () => switchSideTab('queue'));
+    $('cinemaLyricsBtn')?.addEventListener('click', () => {
+      const ov = $('cinemaOverlay');
+      const showing = ov.classList.toggle('show-lyrics');
+      $('cinemaLyricsBtn').classList.toggle('active', showing);
+    });
     $('cinemaQueueBtn')?.addEventListener('click', () => {
       closeCinema();
       switchSideTab('queue');

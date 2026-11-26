@@ -140,6 +140,7 @@
             <div class="home-title-cluster">
               <div class="mobile-brand-avatar mobile-only" aria-hidden="true">Y</div>
               <h1 id="greetingHeading">Good evening</h1>
+              <span class="mobile-only mobile-by-tag">by Pavithran</span>
             </div>
             <div class="hero-actions">
               <button class="glass-btn desktop-only" id="heroAddFolderBtn">Add Folder</button>
@@ -574,7 +575,7 @@
         <span id="cinemaBadge" class="codec-badge">NOW PLAYING</span>
         <button id="cinemaVideoToggleBtn" class="mini-mode-btn hidden"></button>
       </div>
-      <button id="closeCinemaBtn" class="glass-btn">Exit Fullscreen</button>
+      <button id="closeCinemaBtn" class="glass-btn"><span class="desktop-only">Exit Fullscreen</span><span class="mobile-only" data-icon="chevronDown"></span></button>
     </div>
 
     <div id="cinemaVideoStage" class="cinema-video-stage hidden"></div>
@@ -623,8 +624,9 @@
 
       <div class="bar-right">
         <button id="cinemaSpeedBtn" class="chip-ctrl-btn mobile-only" title="Playback Speed">1.0x</button>
+        <button id="cinemaLyricsBtn" class="chip-ctrl-btn mobile-only" title="Lyrics">Lyrics</button>
         <button id="cinemaQueueBtn" class="chip-ctrl-btn mobile-only" title="View Queue">Queue</button>
-        <button id="cinemaSleepBtn" class="chip-ctrl-btn mobile-only" title="Sleep Timer">Sleep</button>
+        <button id="cinemaSleepBtn" class="chip-ctrl-btn mobile-only" title="Sleep Timer"></button>
         <span class="icon-btn desktop-only" data-icon="volume" style="cursor:default"></span>
         <input id="cinemaVolSlider" class="desktop-only" type="range" min="0" max="1" step="0.01" value="0.85" />
       </div>
